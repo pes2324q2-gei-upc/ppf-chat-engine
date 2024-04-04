@@ -81,6 +81,9 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
+		// Set a 1ms delay to avoid a busy loop
+		time.Sleep(5 * time.Millisecond)
+
 		// Send the trimmed message to the engine
 		message := bytes.TrimSpace(msg)
 		c.Engine.Broadcast(message)

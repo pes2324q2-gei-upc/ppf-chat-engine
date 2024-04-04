@@ -14,6 +14,8 @@ type WsChatEngine struct {
 
 	register   chan *Client
 	unregister chan *Client
+
+	broadcast chan []byte // broadcast channel
 }
 
 var DefaultChatEngine = NewChatEngine()
@@ -21,7 +23,10 @@ var DefaultChatEngine = NewChatEngine()
 // NewChatEngine creates a new instance of WebSocketServer.
 func NewChatEngine() *WsChatEngine {
 	return &WsChatEngine{
-		clients: make(map[*Client]bool),
+		clients:    make(map[*Client]bool),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		broadcast:  make(chan []byte),
 	}
 }
 
@@ -30,15 +35,17 @@ func (ce *WsChatEngine) Run() {
 	for {
 		select {
 		case client := <-ce.register:
-			ce.RegisterClient(client)
+			ce.registerClient(client)
 		case client := <-ce.unregister:
-			ce.UnregisterClient(client)
+			ce.unregisterClient(client)
+		case message := <-ce.broadcast:
+			ce.broadcastClients(message)
 		}
 	}
 }
 
 // RegisterClient registers a client to the WebSocket server.
-func (ce *WsChatEngine) RegisterClient(client *Client) {
+func (ce *WsChatEngine) registerClient(client *Client) {
 	ce.clients[client] = true
 	client.Engine = ce
 
@@ -47,8 +54,18 @@ func (ce *WsChatEngine) RegisterClient(client *Client) {
 }
 
 // UnregisterClient unregisters a client from the WebSocket server.
-func (ce *WsChatEngine) UnregisterClient(client *Client) {
+func (ce *WsChatEngine) unregisterClient(client *Client) {
 	delete(ce.clients, client)
+}
+
+// RegisterClient registers a client to the WebSocket server.
+func (ce *WsChatEngine) RegisterClient(client *Client) {
+	ce.register <- client
+}
+
+// UnregisterClient unregisters a client from the WebSocket server.
+func (ce *WsChatEngine) UnregisterClient(client *Client) {
+	ce.unregister <- client
 }
 
 func (ce *WsChatEngine) GetClients() []*Client {
@@ -61,6 +78,11 @@ func (ce *WsChatEngine) GetClients() []*Client {
 
 // Broadcast sends a message to all clients.
 func (ce *WsChatEngine) Broadcast(message []byte) {
+	ce.broadcast <- message
+}
+
+// Broadcast sends a message to all clients.
+func (ce *WsChatEngine) broadcastClients(message []byte) {
 	for client := range ce.clients {
 		client.Send(message)
 	}
