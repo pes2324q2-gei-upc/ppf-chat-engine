@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/api"
-	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 )
 
 var addr *string
@@ -17,7 +16,7 @@ func main() {
 	flag.Parse()
 	addr = flag.String("addr", ":8082", "http service address")
 
-	go chat.DefaultChatEngine.Run()
+	go api.DefaultChatEngine.Server.Run()
 	api.RegisterHandlers()
 
 	log.Fatal(http.ListenAndServe(*addr, nil))
