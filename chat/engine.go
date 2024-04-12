@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,8 @@ type ChatEngine struct {
 	Server     *WsServer        // Server represents the WebSocket server.
 	Users      map[string]*User // Users represents the map of users in the chat engine.
 	Rooms      map[string]*Room // Rooms represents the map of rooms in the chat engine.
+	UserRepo   UserRepository   // UserRepo represents the repository for users.
+	RoomRepo   RoomRepository   // RoomRepo represents the repository for rooms.
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.
@@ -123,8 +126,13 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driverId string) erro
 }
 
 // NewChatEngine creates a new instance of ChatEngine.
-func NewChatEngine() *ChatEngine {
-	engine := &ChatEngine{}
+func NewChatEngine(conn *sql.DB) *ChatEngine {
+	engine := &ChatEngine{
+		HttpClient: &http.Client{},
+		UserRepo:   SqlUserRepository{Db: conn},
+		RoomRepo:   SqlRoomRepository{Db: conn},
+	}
 	engine.Server = NewWsServer(engine)
+
 	return engine
 }
