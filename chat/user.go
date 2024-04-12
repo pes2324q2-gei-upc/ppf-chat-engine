@@ -1,10 +1,17 @@
 package chat
 
-type UserId string
-
 type User struct {
-	Id     UserId
+	Id     string
 	Name   string
 	Client *Client
-	Rooms  map[RoomId]*Room
+	Rooms  map[string]*Room
+}
+
+func NewUser(id, name string, client *Client) *User {
+	return &User{
+		Id:     id,
+		Name:   name,
+		Client: client,
+		Rooms:  make(map[string]*Room),
+	}
 }

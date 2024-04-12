@@ -9,8 +9,8 @@ const (
 type Message struct {
 	Command string `json:"command"`
 	Content string `json:"content"`
-	Room    RoomId `json:"room"`
-	Sender  UserId `json:"sender"`
+	Room    string `json:"room"`
+	Sender  string `json:"sender"`
 }
 
 func (m *Message) FromJson(jsonData []byte) error {

@@ -1,6 +1,10 @@
+// Description: This file contains the API server implementation.
+
 package api
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -8,38 +12,159 @@ import (
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 )
 
+// ChatApiController is a controller for handling API requests to perform operations on the chat engine.
 type ChatApiController struct {
-	engine *chat.ChatEngine
+	Router *mux.Router
+	Engine *chat.ChatEngine
 }
 
-// RegisterHandlers registers the HTTP request handlers.
-func (controller *ChatApiController) RegisterHandlers() {
-	log.Println("Registering handlers")
-	http.HandleFunc("/", controller.RootHandler)
-	http.HandleFunc("/connect/<userId>", controller.DefaultConnectHandler)
+type PostRoomRequest struct {
+	Id     string `json:"id"`
+	Driver string `json:"driver"`
+	Name   string `json:"name"`
 }
 
-// RootHandler handles the root HTTP request, always sends 200 status code and an empty body.
-func (controller *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Request) {
+type PostJoinRequest struct {
+	Id     string `json:"id"`
+	Driver string `json:"driver"`
+}
+
+type PostLeaveRequest struct {
+	Id     string `json:"id"`
+	Driver string `json:"driver"`
+}
+
+// parseRequestBody reads and parses the request body into the provided value.
+func parseRequestBody(r *http.Request, v any) error {
+	defer r.Body.Close()
+	body, _ := io.ReadAll(r.Body)
+	if err := json.Unmarshal(body, v); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RootHandler handles the request to the home route.
+// It always returns a 200 status code.
+//
+//	@Summary	always returns 200
+//	@Tags		endpoints
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{object}	any
+//	@Router		/ [get]
+func (ctrl *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// WsHandler handles the WebSocket request.
-func (controller *ChatApiController) DefaultConnectHandler(w http.ResponseWriter, r *http.Request) {
-	id := chat.UserId(mux.Vars(r)["userId"])
+// DefaultConnectHandler handles the request to open a connection.
+// It promotes an HTTP request to a WebSocket connection.
+//
+//	@Summary		opens a connection
+//	@Description	promotes an http request to a websocket connection
+//	@Tags			endpoints
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	any
+//	@Router			/connect/{userId} [get]
+func (ctrl *ChatApiController) DefaultConnectHandler(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["userId"]
 	// If the user does not exist on the engine, load it.
-	if !controller.engine.Exists(chat.UserId(id)) {
-		if err := controller.engine.LoadUser(id); err != nil {
+	if !ctrl.Engine.Exists(id) {
+		if err := ctrl.Engine.LoadUser(id); err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
 	}
-	if err := controller.engine.ConnectUser(id, w, r); err != nil {
+	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// POST /user/<userId>/join/<roomId>
-// POST /user/<userId>/leave/<roomId>
+// CreateRoomHandler handles the request to open a new room.
+// It opens a new room and joins the specified driver.
 //
-// POST /room
+//	@Summary		opens a new room
+//	@Description	opens a new room and joins the specified driver
+//	@Tags			endpoints
+//	@Accept			json
+//	@Produce		json
+//	@Param			data	body	api.PostRoomRequest	true	"room data"
+//	@Router			/room [post]
+func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
+	room := &PostRoomRequest{}
+	// Parse request body
+	if err := parseRequestBody(r, room); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Create room
+	ctrl.Engine.OpenRoom(room.Id, room.Name, room.Driver)
+	// Join user to room
+	if !ctrl.Engine.Exists(room.Driver) {
+		ctrl.Engine.LoadUser(room.Driver)
+	}
+	ctrl.Engine.JoinRoom(room.Id, room.Driver)
+	w.WriteHeader(http.StatusCreated)
+}
+
+// JoinRoomHandler handles the request to join a chat room.
+// It joins the specified user to the room.
+//
+//	@Summary	makes user join a room
+//	@Tags		endpoints
+//	@Accept		json
+//	@Produce	json
+//	@Param		data	body	api.PostJoinRequest	true	"room data"
+//	@Router		/join [post]
+func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
+	room := &PostJoinRequest{}
+	// Parse request body
+	if err := parseRequestBody(r, room); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Join user to room
+	if !ctrl.Engine.Exists(room.Driver) {
+		ctrl.Engine.LoadUser(room.Driver)
+	}
+	ctrl.Engine.JoinRoom(room.Id, room.Driver)
+	w.WriteHeader(http.StatusOK)
+}
+
+// LeaveRoomHandler handles the request to leave a chat room.
+// It removes the specified user from the room.
+//
+//	@Summary	makes user leave a room
+//	@Tags		endpoints
+//	@Accept		json
+//	@Produce	json
+//	@Param		data	body		api.PostLeaveRequest	true	"room data"
+//	@Success	200		{object}	any
+//	@Router		/leave [post]
+func (ctrl *ChatApiController) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
+	room := &PostLeaveRequest{}
+	// Parse request body
+	if err := parseRequestBody(r, room); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Leave user from room
+	ctrl.Engine.LeaveRoom(room.Id, room.Driver)
+	w.WriteHeader(http.StatusOK)
+}
+
+// NewChatController creates a new instance of ChatApiController.
+func NewChatController(router *mux.Router, engine *chat.ChatEngine) *ChatApiController {
+	ctrl := &ChatApiController{
+		Router: mux.NewRouter(),
+		Engine: engine,
+	}
+	log.Println("info: registering API handlers")
+	ctrl.Router.HandleFunc("/", ctrl.RootHandler).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/connect/{userId}", ctrl.DefaultConnectHandler).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/room", ctrl.CreateRoomHandler).Methods(http.MethodPost)
+	ctrl.Router.HandleFunc("/join", ctrl.JoinRoomHandler).Methods(http.MethodPost)
+	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoomHandler).Methods(http.MethodPost)
+	return ctrl
+}

@@ -1,5 +1,8 @@
 # Behavior design of Chat Engine
 
+**ChatEngine Start - Sequence Diagram:**
+
+
 **App Init - Sequence Diagram:**
 1. App stablishes a WebSocket connection to the ChatEngine.
 2. Sends a msg to the ChatEngine to retrieve the list of chat rooms the user has joined.
@@ -14,7 +17,6 @@
 6. Server responds with the latest messages.
 [end for]
 7. App listens for new messages and updates the chat rooms in parallel with other app activities.
-
 * The chat room data should be in memory until the user closes the app or logs out.
 
 **Driver Creates Route - Sequence Diagram:**
@@ -24,9 +26,9 @@
 4. ChatEngine acknowledges RouteAPIs message.
     - If the ACK fails the RouteAPI should retry the request.
 6. ChatEngine creates a chat room for the route
-7. ChatEngine joins the driver to the chat room 
+7. ChatEngine joins the driver to the chat room
+    - If ChatEngine does not have the user info it requests it to the UserAPI
 8. ChatEngine sends a msg through WS to notify the driver joined a chat room.
-9. App adds the room to the cached data.
 
 **User Joins Route - Sequence Diagram:**
 1. User joins a route, requests RouteAPI to join the route.

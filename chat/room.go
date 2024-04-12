@@ -1,12 +1,10 @@
 package chat
 
-type RoomId string
-
 type Room struct {
-	Id         RoomId
-	Name       string
-	Driver     *UserId
-	Users      map[UserId]*User
+	Id         string           `json:"id"`
+	Name       string           `json:"name"`
+	Driver     *string          `json:"driver"`
+	Users      map[string]*User `json:"users"`
 	register   chan *User
 	unregister chan *User
 	broadcast  chan *Message
@@ -37,12 +35,12 @@ func (room *Room) Empty() bool {
 	return len(room.Users) == 0
 }
 
-func NewRoom(id RoomId, name string, driver *UserId) *Room {
+func NewRoom(id string, name string, driver *string) *Room {
 	return &Room{
 		Id:       id,
 		Name:     name,
 		Driver:   driver,
-		Users:    make(map[UserId]*User, 1),
+		Users:    make(map[string]*User, 1),
 		register: make(chan *User, 2),
 	}
 }
