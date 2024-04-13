@@ -31,16 +31,24 @@ func (room *Room) Run() {
 	}
 }
 
+func (room *Room) Close() {
+	room.close <- true
+}
+
 func (room *Room) Empty() bool {
 	return len(room.Users) == 0
 }
 
 func NewRoom(id string, name string, driver *string) *Room {
 	return &Room{
-		Id:       id,
-		Name:     name,
-		Driver:   driver,
-		Users:    make(map[string]*User, 1),
-		register: make(chan *User, 2),
+		Id:         id,
+		Name:       name,
+		Driver:     driver,
+		Users:      make(map[string]*User, 1),
+		register:   make(chan *User, 2),
+		unregister: make(chan *User, 2),
+		broadcast:  make(chan *Message, 2),
+		connect:    make(chan *Client, 2),
+		close:      make(chan bool),
 	}
 }

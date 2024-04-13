@@ -22,7 +22,6 @@ type ChatEngine struct {
 func (engine *ChatEngine) CloseRoom(id string) {
 	room := engine.Rooms[id]
 	room.close <- true
-
 	// If a user is not in any room, close the connection and delete it.
 	for _, user := range room.Users {
 		if len(user.Rooms) == 0 {
@@ -36,12 +35,12 @@ func (engine *ChatEngine) CloseRoom(id string) {
 // ConnectUser connects a user to the chat engine with the specified ID.
 // The user must be loaded in the chat engine before connecting.
 func (engine *ChatEngine) ConnectUser(id string, w http.ResponseWriter, r *http.Request) error {
-	client := engine.Server.OpenConnection(w, r)
-	if user, ok := engine.Users[id]; !ok {
-		return ErrUserNotLoaded
-	} else {
-		client.User = user
+	user, ok := engine.Users[id]
+	if !ok {
+		return ErrUserNotFound
 	}
+	client := engine.Server.OpenConnection(w, r)
+	client.User = user
 	// Register the client to the server.
 	engine.Server.register <- client
 	return nil
@@ -54,12 +53,14 @@ func (engine *ChatEngine) Exists(id string) bool {
 
 // JoinRoom joins a user to the specified room in the chat engine.
 // The user must be loaded in the chat engine before connecting.
-func (engine *ChatEngine) JoinRoom(room string, userId string) error {
+func (engine *ChatEngine) JoinRoom(room string, user string) error {
 	// If the user is not in the engine, create it.
-	if user, ok := engine.Users[userId]; !ok {
-		return ErrUserNotLoaded
+	if user, ok := engine.Users[user]; !ok {
+		return ErrUserNotFound
+	} else if r, ok := engine.Rooms[room]; !ok {
+		return ErrRoomNotFound
 	} else {
-		engine.Rooms[room].register <- user
+		r.register <- user
 	}
 	return nil
 }
@@ -70,16 +71,13 @@ func (engine *ChatEngine) JoinRoom(room string, userId string) error {
 func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 	user, ok := engine.Users[userId]
 	if !ok {
-		return ErrUserNotLoaded
+		return ErrUserNotFound
 	}
 	room, ok := engine.Rooms[roomId]
 	if !ok {
 		return ErrRoomNotFound
 	}
 	room.unregister <- user
-	if room.Empty() {
-		engine.CloseRoom(roomId)
-	}
 	// If the user is in no rooms, close the connection and delete it.
 	if len(user.Rooms) == 0 {
 		engine.Server.unregister <- user.Client
@@ -88,25 +86,26 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 	return nil
 }
 
-func (engine *ChatEngine) LoadUser(id string) error {
+func (engine *ChatEngine) LoadUser(id string) error { // IMPROVE error handling
 	// Make a get request to the UserAPI to retrieve the user
 	r, _ := http.NewRequest(
 		http.MethodGet,
 		fmt.Sprintf("http://user-api/drivers/%s", id),
 		nil,
 	)
-	response, err := engine.HttpClient.Do(r) // TODO handle error
+	response, err := engine.HttpClient.Do(r)
 	if err != nil || response.StatusCode != http.StatusOK {
 		return ErrUserApiRequestFailed
 	}
 	defer response.Body.Close()
 
-	body, _ := io.ReadAll(response.Body) // TODO handle error
+	body, _ := io.ReadAll(response.Body)
 	var user User
 	if err = json.Unmarshal(body, &user); err != nil {
 		return ErrUserUnmarshalFailed
 	}
 	engine.Users[id] = &user
+	engine.UserRepo.Add(user)
 	return nil
 }
 
@@ -116,10 +115,12 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driverId string) erro
 	// If the driver is not in the engine, return an error.
 	driver, ok := engine.Users[driverId]
 	if !ok {
-		return ErrUserNotLoaded
+		return ErrUserNotFound
 	}
 	room := NewRoom(id, name, &driver.Id)
 	engine.Rooms[id] = room
+	// Store the room in the repository.
+	engine.RoomRepo.Add(*room)
 
 	go room.Run()
 	return nil
@@ -129,10 +130,11 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driverId string) erro
 func NewChatEngine(conn *sql.DB) *ChatEngine {
 	engine := &ChatEngine{
 		HttpClient: &http.Client{},
+		Users:      make(map[string]*User),
+		Rooms:      make(map[string]*Room),
 		UserRepo:   SqlUserRepository{Db: conn},
 		RoomRepo:   SqlRoomRepository{Db: conn},
 	}
 	engine.Server = NewWsServer(engine)
-
 	return engine
 }
