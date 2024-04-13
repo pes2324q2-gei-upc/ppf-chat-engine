@@ -14,20 +14,24 @@ import (
 	swag "github.com/swaggo/http-swagger/v2"
 )
 
-//	@title		Chat Engine API
-//	@BasePath	/
+// @title		Chat Engine API
+// @BasePath	/
 func main() {
 	flag.Parse()
 	addr := flag.String("addr", ":8082", "http service address")
 
-	ctrl := api.NewChatController(mux.NewRouter(), chat.NewChatEngine())
-	http.Handle("/", ctrl.Router)
+	db := chat.InitDB("sqlite3", "chat.db") // ENCH Pass db info as argument
+	router := mux.NewRouter()
+	engine := chat.NewChatEngine(db)
+	ctrl := api.NewChatController(router, engine)
 
+	// Swagger documentation route
 	ctrl.Router.PathPrefix("/swagger").Handler(swag.Handler(
 		swag.URL("http://localhost:8082/swagger/doc.json"),
 	)).Methods(http.MethodGet)
 
 	go ctrl.Engine.Server.Run()
 
+	http.Handle("/", ctrl.Router)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
