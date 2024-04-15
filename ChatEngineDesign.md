@@ -1,79 +1,123 @@
-# Behavior design of Chat Engine
+# Chat Engine Design
+> Design document for the Chat Engine, contains sequence diagrams, design decisions, etc
 
-**ChatEngine Start - Sequence Diagram:**
+- [Chat Engine Design](#chat-engine-design)
+  - [Sequence Diagrams](#sequence-diagrams)
+    - [**Chat Engine start**](#chat-engine-start)
+    - [**Driver creates route**](#driver-creates-route)
+    - [**User joins route**](#user-joins-route)
+    - [**User leaves route**](#user-leaves-route)
+    - [**User connects**](#user-connects)
+    - [**User disconnects**](#user-disconnects)
+    - [**User sends message**](#user-sends-message)
+      - [**User requests joined rooms**](#user-requests-joined-rooms)
+      - [**User requests room messages**](#user-requests-room-messages)
+      - [**User sends text message**](#user-sends-text-message)
+  - [Shcemas](#shcemas)
+    - [Message](#message)
+      - [Message types](#message-types)
+  - [PlantUML](#plantuml)
+  - [Design Decisions](#design-decisions)
+    - [DD1](#dd1)
 
 
-**App Init - Sequence Diagram:**
-1. App stablishes a WebSocket connection to the ChatEngine.
-2. Sends a msg to the ChatEngine to retrieve the list of chat rooms the user has joined.
-3. ChatEngine responds with the list of chat rooms.
-4. App checks the cached data for the chat rooms.
-    - If New Rooms Found: App sends msg to retrieve the messages for the new chat rooms.
-    - If Rooms Left: App removes the chat rooms that the user has left from the cached data.
-[for each existing chat room]
-5. App sends a msg to retrieve the latest messages by providing the last message timestamp.
-    - If no timestamp, server returns the last X messages.
-    - If has timestamp, server returns the messages after that timestamp.
-6. Server responds with the latest messages.
-[end for]
-7. App listens for new messages and updates the chat rooms in parallel with other app activities.
-* The chat room data should be in memory until the user closes the app or logs out.
+**Abreviations:**
+- `Chat Engine : CE`
 
-**Driver Creates Route - Sequence Diagram:**
+## Sequence Diagrams
+### **Chat Engine start**
+1. CE starts  
+2. Opens Database connection  
+3. [Requests all routes from the RouteAPI (DD1)](#dd1)  
+    - for each route, CE requests it's users from the UserAPI and stores the users in the database
+    - CE creates a chat room for each route and joins the users to the chat room, stores the chat room in the database
+5. Opens a WebSocket server
+6. Opens a HTTP server and listens for incoming requests
+
+### **Driver creates route**
 1. Driver creates a route, App requests RouteAPI to create a route.
 2. RouteAPI creates a route and returns the route ID.
 3. RouteAPI requests ChatEngine to create a chat room for the route with the route ID and the driver's user ID.
-4. ChatEngine acknowledges RouteAPIs message.
-    - If the ACK fails the RouteAPI should retry the request.
+   - If the ACK fails the RouteAPI should retry the request.
 6. ChatEngine creates a chat room for the route
 7. ChatEngine joins the driver to the chat room
     - If ChatEngine does not have the user info it requests it to the UserAPI
 8. ChatEngine sends a msg through WS to notify the driver joined a chat room.
 
-**User Joins Route - Sequence Diagram:**
+### **User joins route**
 1. User joins a route, requests RouteAPI to join the route.
 2. RouteAPI joins the user to the route and returns the route ID.
 3. RouteAPI requests ChatEngine to join the user to the chat room for the route with the route ID and the user's user ID.
-4. ChatEngine acknowledges RouteAPIs message.
-    - If the ACK fails the RouteAPI should retry the request.
+   - If the ACK fails the RouteAPI should retry the request.
 5. ChatEngine joins the user to the chat room.
 6. ChatEngine sends a msg through WS to notify the user joined a chat room.
 7. App adds the room to the cached data.
 
-**User Leaves Route - Sequence Diagram:**
+### **User leaves route**
 1. User leaves a route, requests RouteAPI to leave the route.
 2. RouteAPI leaves the user from the route.
 3. RouteAPI requests ChatEngine to leave the user from the chat room for the route with the route ID and the user's user ID.
-4. ChatEngine acknowledges RouteAPIs message.
-    - If the ACK fails the RouteAPI should retry the request.
+   - If the ACK fails the RouteAPI should retry the request.
 5. ChatEngine leaves the user from the chat room.
 6. ChatEngine sends a msg through WS to notify the user left the chat room.
 7. App removes the room from the cached data.
 
-Task Inception:
+### **User connects**
 
-### Phase 1: Basic Chat Application of One Room
-[BACK] 1.0 Set up the project
-[BACK] 1.1 Implement basic WebSocket server
-[BACK] 1.2 Implement basic message broadcasting
-[BACK] 1.3 Implement tests the basic chat functionality
+### **User disconnects**
 
-### Phase 2: Multi-room & 1 to 1 Chats
-[BACK] 2.0 Implement room support
-[BACK] 2.1 Implement room message broadcast
-[BACK] 2.2 Implement 1 to 1 chats
-[BACK] 2.3 Test multi-room and 1 to 1 Chats
+### **User sends message**
+#### **User requests joined rooms**
 
-### Phase 3: Using Redis Pub/Sub for Scalability
-[BACK] 3.0 Set up Redis
-[BACK] 3.1 Implement persistance layer
-[BACK] 3.2 Implement Redis Pub/Sub handling
+#### **User requests room messages**
 
-### Phase 4: Route Service Integration
-[BACK] 4.0 Setup Swagger docs
-[BACK] 4.0 Implement Create room API endpoint
-[BACK] 4.1 Implement Join room API endpoint
-[BACK] 4.2 Implement Leave room API endpoint
+#### **User sends text message**
 
-### Phase 5: Authentication
-TBD 
+## Shcemas
+### Message
+```json
+{
+    "command": "string",
+    "content": "string",
+    "room": "string",
+    "sender": "string"
+}
+```
+#### Message types
+**Get joined rooms**
+```json
+{
+    "command": "GetRooms",
+    "content": "",
+    "room": "",
+    "sender": "<user_id>"
+}
+```
+
+**Get room messages**
+```json
+{
+    "command": "GetMessages",
+    "content": "<datetime ISO 8601>", // optional
+    "room": "<room_id>",
+    "sender": "<user_id>"
+}
+```
+- if `content` is an empty string, the CE should return all messages in the room in order
+
+**Send message**
+```json
+{
+    "command": "SendMessage",
+    "content": "<message>",
+    "room": "<room_id>",
+    "sender": "<user_id>"
+}
+```
+
+## PlantUML
+![Architecture](ChatEngineMain.png)
+
+## Design Decisions
+### DD1
+Every time the CE starts it requests all routes and users. While this is not the most efficient way to handle this, it is the simplest way to ensure that the CE has all the data it needs to function. **A trade-off between performance and simplicity.** The CE could be optimized to only request the routes and users that have changed since the last time it started or queue room creation at the RouteAPI.

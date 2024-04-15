@@ -19,8 +19,11 @@ type ChatEngine struct {
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.
-func (engine *ChatEngine) CloseRoom(id string) {
-	room := engine.Rooms[id]
+func (engine *ChatEngine) CloseRoom(id string) error {
+	room, ok := engine.Rooms[id]
+	if !ok {
+		return ErrRoomNotFound
+	}
 	room.close <- true
 	// If a user is not in any room, close the connection and delete it.
 	for _, user := range room.Users {
@@ -30,6 +33,7 @@ func (engine *ChatEngine) CloseRoom(id string) {
 		}
 	}
 	delete(engine.Rooms, id)
+	return nil
 }
 
 // ConnectUser connects a user to the chat engine with the specified ID.
@@ -111,13 +115,13 @@ func (engine *ChatEngine) LoadUser(id string) error { // IMPROVE error handling
 
 // OpenRoom creates a new room with the specified ID, name and driver user, and adds it to the engine.
 // The driver user must be loaded in the chat engine before opening the room.
-func (engine *ChatEngine) OpenRoom(id string, name string, driverId string) error {
-	// If the driver is not in the engine, return an error.
-	driver, ok := engine.Users[driverId]
+func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error {
+	// If the user is not in the engine, return an error.
+	user, ok := engine.Users[driver]
 	if !ok {
 		return ErrUserNotFound
 	}
-	room := NewRoom(id, name, &driver.Id)
+	room := NewRoom(id, name, &user.Id)
 	engine.Rooms[id] = room
 	// Store the room in the repository.
 	engine.RoomRepo.Add(*room)

@@ -1,5 +1,6 @@
 # ppf-chat-engine
 The PPF chat engine, from scratch
+More at [ChatEngineDesign.md](ChatEngineDesign.md)
 
 - [x] Chat engine with single websocket server
 - [x] Chat Rooms with multiple users
@@ -43,5 +44,13 @@ go test -v ./test
 ···
 ```
 
-## PlantUML
-![Architecture](ChatEngineMain.png)
+## API Endpoints
+
+| METHOD | ENDPOINT           | AUTH | DESCRIPTION                                   |
+| ------ | ------------------ | ---- | --------------------------------------------- |
+| GET    | /connect/<user_id> | USER | Initiates a websocket conn for a certain user |
+
+
+### Authentication
+*Header*: `Authorization: Token <token>`
+*USER*: Requests must include a valid user token in the header
