@@ -4,6 +4,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -57,7 +58,7 @@ func (ctrl *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
-// DefaultConnectHandler handles the request to open a connection.
+// ConnectHandler handles the request to open a connection.
 // It promotes an HTTP request to a WebSocket connection.
 //
 //	@Summary		opens a connection
@@ -67,8 +68,11 @@ func (ctrl *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Reques
 //	@Produce		json
 //	@Success		200	{object}	any
 //	@Router			/connect/{userId} [get]
-func (ctrl *ChatApiController) DefaultConnectHandler(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["userId"]
+func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Request) {
+	id, ok := mux.Vars(r)["userId"]
+	if !ok {
+		log.Fatal("error: missing user ID")
+	}
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
 		if err := ctrl.Engine.LoadUser(id); err != nil {
@@ -77,6 +81,10 @@ func (ctrl *ChatApiController) DefaultConnectHandler(w http.ResponseWriter, r *h
 		}
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
+		if errors.Is(err, chat.ErrUserNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -162,7 +170,7 @@ func NewChatController(router *mux.Router, engine *chat.ChatEngine) *ChatApiCont
 	}
 	log.Println("info: registering API handlers")
 	ctrl.Router.HandleFunc("/", ctrl.RootHandler).Methods(http.MethodGet)
-	ctrl.Router.HandleFunc("/connect/{userId}", ctrl.DefaultConnectHandler).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/connect/{userId}", ctrl.ConnectHandler).Methods(http.MethodGet)
 	ctrl.Router.HandleFunc("/room", ctrl.CreateRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/join", ctrl.JoinRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoomHandler).Methods(http.MethodPost)
