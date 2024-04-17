@@ -51,3 +51,8 @@ func (repo SqlUserRepository) GetAll() ([]UserRecord, error) {
 	}
 	return users, nil
 }
+
+func (repo SqlUserRepository) Clear() error {
+	_, err := repo.Db.Exec("DELETE FROM user")
+	return err
+}

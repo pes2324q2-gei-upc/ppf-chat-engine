@@ -1,17 +1,10 @@
 package chat
 
-type RoomRepository interface {
-	Add(room Room) error
-	Remove(id string) error
+type Repository[T any, K any] interface {
+	Add(T) error
+	Remove(string) error
 
-	Get(id string) (*RoomRecord, error)
-	GetAll() ([]RoomRecord, error)
-}
-
-type UserRepository interface {
-	Add(user User) error
-	Remove(id string) error
-
-	Get(id string) (*UserRecord, error)
-	GetAll() ([]UserRecord, error)
+	Get(string) (*K, error)
+	GetAll() ([]K, error)
+	Clear() error
 }

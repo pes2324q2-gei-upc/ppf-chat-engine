@@ -23,7 +23,9 @@ func (room *Room) Run() {
 			delete(room.Users, user.Id)
 		case message := <-room.broadcast:
 			for _, user := range room.Users {
-				user.Client.send <- message
+				if user.Client != nil && message.Sender != user.Id {
+					user.Client.send <- message
+				}
 			}
 		case <-room.close:
 			return

@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
@@ -28,14 +29,19 @@ type Client struct {
 	Connection *websocket.Conn
 	Server     *WsServer
 	User       *User
-	Rooms      map[string]*Room
 
 	// Buffered channel of outbound messages
 	send chan *Message
 }
 
 // Close closes the client connection and unregisters the client from the engine.
-func (client *Client) Close() {}
+func (client *Client) Close() {
+	log.Printf("info: closing connection for user %s", client.User.Id)
+	client.send = nil
+	client.User = nil
+	client.Connection.Close()
+	client.Server.unregister <- client
+}
 
 // ReadPump pump messages from the websocket conn to the engine.
 func (client *Client) ReadPump() {
@@ -92,7 +98,7 @@ func (client *Client) WritePump() {
 			if err != nil {
 				return
 			}
-			if jsonMsg, err := msg.ToJson(); err != nil {
+			if jsonMsg, err := msg.Json(); err != nil {
 				writer.Close()
 				log.Panicln("panic: %w", err) // Panic if the message can't be marshalled to JSON
 			} else {
@@ -101,7 +107,7 @@ func (client *Client) WritePump() {
 			// Handle queued messages
 			for range len(client.send) {
 				msg = <-client.send
-				if msgJson, err := msg.ToJson(); err != nil {
+				if msgJson, err := msg.Json(); err != nil {
 					writer.Close()
 					log.Panicln("panic: %w", err)
 				} else {
@@ -121,17 +127,27 @@ func (client *Client) WritePump() {
 	}
 }
 
-func (client *Client) HandleMessage(msg []byte) {
+func (client *Client) HandleMessage(raw []byte) {
 	message := &Message{}
-	if err := message.FromJson(msg); err != nil {
+	if err := json.Unmarshal(raw, message); err != nil {
 		log.Printf("error: %v", err)
 		return
 	}
-	switch message.Command {
-	case SendMessageCmd:
-		client.User.Rooms[message.Room].broadcast <- message
+
+	// If the message sender is not the client user, ignore the message
+	if message.Sender != client.User.Id {
+		log.Printf("error: wrong message sender")
+		return
 	}
 
+	switch message.Command {
+	case SendMessageCmd:
+		if room, ok := client.User.Rooms[message.Room]; ok {
+			room.broadcast <- message
+		}
+	default:
+		log.Printf("error: unknown command %s", message.Command)
+	}
 }
 
 // NewClient creates a new Client instance.
@@ -140,7 +156,6 @@ func NewClient(connection *websocket.Conn, server *WsServer, user *User) *Client
 		connection,
 		server,
 		user,
-		make(map[string]*Room),
 		make(chan *Message, 256),
 	}
 }

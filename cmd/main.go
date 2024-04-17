@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/api"
@@ -14,16 +15,44 @@ import (
 	swag "github.com/swaggo/http-swagger/v2"
 )
 
+func getEnv(key, fallback string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		value = fallback
+	}
+	return value
+}
+
 // @title		Chat Engine API
 // @BasePath	/
 func main() {
+	addr := flag.String("addr", "localhost:8080", "http service address")
+	dbPath := flag.String("db", "chat.db", "database path")
 	flag.Parse()
-	addr := flag.String("addr", ":8082", "http service address")
 
-	db := chat.InitDB("sqlite3", "chat.db") // ENCH Pass db info as argument
+	debug := getEnv("DEBUG", "false") == "true"
+	var userApiUrl string
+	var routeApiUrl string
+
+	if debug {
+		routeApiUrl = "http://localhost:8080"
+		userApiUrl = "http://localhost:8081"
+	} else {
+		routeApiUrl = "http://route-api:8080"
+		userApiUrl = "http://user-api:8081"
+	}
+	mail := getEnv("PPF_MAIL", "admin@ppf.com")
+	pass := getEnv("PPF_PASS", "chatengine")
+
+	conf := chat.NewConfiguration(debug, userApiUrl, routeApiUrl, mail, pass)
+
+	db := chat.InitDB("sqlite3", *dbPath)
 	router := mux.NewRouter()
-	engine := chat.NewChatEngine(db)
+	engine := chat.NewChatEngine(db, conf)
 	ctrl := api.NewChatController(router, engine)
+
+	engine.Login()
+	engine.Initialize()
 
 	// Swagger documentation route
 	ctrl.Router.PathPrefix("/swagger").Handler(swag.Handler(
@@ -33,5 +62,6 @@ func main() {
 	go ctrl.Engine.Server.Run()
 
 	http.Handle("/", ctrl.Router)
+	log.Printf("info: starting server on %s", *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }

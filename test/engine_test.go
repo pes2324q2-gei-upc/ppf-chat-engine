@@ -36,11 +36,11 @@ func setup() {
 	testRoom1 = chat.NewRoom("room1", "Room 1", &testUser1.Name)
 	testRoom2 = chat.NewRoom("room2", "Room 2", &testUser2.Name)
 
-	ctrl := api.NewChatController(mux.NewRouter(), chat.NewChatEngine(db))
-	mockServer = httptest.NewServer(ctrl.Router)
-
+	conf := chat.NewConfiguration(false, mockServer.URL, mockServer.URL, "", "")
 	db = chat.InitDB("sqlite3", "file:test.db?cache=shared&mode=memory")
-	engine = chat.NewChatEngine(db)
+	engine = chat.NewChatEngine(db, conf)
+	ctrl := api.NewChatController(mux.NewRouter(), engine)
+	mockServer = httptest.NewServer(ctrl.Router)
 }
 
 func teardown() {

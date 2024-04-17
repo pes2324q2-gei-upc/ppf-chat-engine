@@ -46,3 +46,8 @@ func (repo SqlRoomRepository) GetAll() ([]RoomRecord, error) {
 	}
 	return rooms, nil
 }
+
+func (repo SqlRoomRepository) Clear() error {
+	_, err := repo.Db.Exec("DELETE FROM rooms")
+	return err
+}

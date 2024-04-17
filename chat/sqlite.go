@@ -20,7 +20,7 @@ const (
 )
 
 func InitDB(driver string, source string) *sql.DB {
-	log.Printf("init %s database at %s", driver, source)
+	log.Printf("info: init %s database at %s", driver, source)
 
 	db, err := sql.Open(driver, source)
 	if err != nil {

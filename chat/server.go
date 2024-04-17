@@ -18,6 +18,7 @@ func (server *WsServer) Run() {
 	for {
 		select {
 		case client := <-server.register:
+			log.Printf("info: registering client %s", client.User.Id)
 			server.Clients[client] = true
 		case client := <-server.unregister:
 			if _, ok := server.Clients[client]; ok {
@@ -36,7 +37,8 @@ func (server *WsServer) OpenConnection(w http.ResponseWriter, r *http.Request) *
 		return nil
 	}
 	client := NewClient(conn, server, nil)
-	server.register <- client
+	go client.ReadPump()
+	go client.WritePump()
 	return client
 }
 
