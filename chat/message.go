@@ -2,20 +2,24 @@ package chat
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 const (
-	SendMessageCmd = "SendMessage"
-	GetRoomsCmd    = "GetRooms"
-	GetMessagesCmd = "GetMessages"
+	SendMessageCmd     = "SendMessage"
+	GetRoomsCmd        = "GetRooms"
+	GetRoomMessagesCmd = "GetRoomMessages"
+
+	SendMessageAckContent = `{"status":"ok", "message":"sent"}`
+	RoomNotFoundContent   = `{"status":"error","message":"room not found"}`
+	NotImplementedContent = `{"status":"error","message":"not implemented"}`
 )
 
 type Message struct {
-	Command string `json:"command"`
-	Content string `json:"content"`
-	Room    string `json:"room"`
-	Sender  string `json:"sender"`
+	MessageId string `json:"messageId"`
+	Command   string `json:"command"`
+	Content   string `json:"content"`
+	Room      string `json:"room"`
+	Sender    string `json:"sender"`
 }
 
 func (msg *Message) UnmarshalJSON(data []byte) error {
@@ -26,11 +30,12 @@ func (msg *Message) UnmarshalJSON(data []byte) error {
 		Alias: (*Alias)(msg),
 	}
 
-	// Unmarshal the JSON data into the auxiliary structure
+	// Unmarshal the JSON data into the auxiliary structure to avoid infinite recursion
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	if msg.Command == "" {
+
+	if msg.MessageId == "" || msg.Command == "" {
 		return ErrMessageMalformed
 	}
 	// Check if non-optional fields are empty based on the command
@@ -42,16 +47,17 @@ func (msg *Message) UnmarshalJSON(data []byte) error {
 		}
 	case GetRoomsCmd:
 		// For GetRooms, only sender is required
+		// TODO why?
 		if msg.Sender == "" {
 			return ErrMessageMalformed
 		}
-	case GetMessagesCmd:
-		// For GetMessages, all fields are required
+	case GetRoomMessagesCmd:
+		// For GetRoomMessages, all fields are required
 		if msg.Content == "" || msg.Room == "" || msg.Sender == "" {
 			return ErrMessageMalformed
 		}
 	default:
-		return fmt.Errorf("unknown command: %s", msg.Command)
+		return ErrUnknownCommand
 	}
 	return nil
 }

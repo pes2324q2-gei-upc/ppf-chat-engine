@@ -2,6 +2,8 @@ package chat
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -130,24 +132,76 @@ func (client *Client) WritePump() {
 func (client *Client) HandleMessage(raw []byte) {
 	message := &Message{}
 	if err := json.Unmarshal(raw, message); err != nil {
+		if errors.Is(err, ErrNoMessageId) {
+			return
+		}
+		if errors.Is(err, ErrMessageMalformed) {
+			client.handleError(message, err)
+		}
+		if errors.Is(err, ErrUnknownCommand) {
+			client.handleError(message, err)
+		}
 		log.Printf("error: %v", err)
 		return
 	}
 
 	// If the message sender is not the client user, ignore the message
 	if message.Sender != client.User.Id {
-		log.Printf("error: wrong message sender")
+		client.handleError(message, ErrWrongMessageSender)
+		log.Printf("error: %v", ErrWrongMessageSender)
 		return
 	}
 
 	switch message.Command {
 	case SendMessageCmd:
-		if room, ok := client.User.Rooms[message.Room]; ok {
-			room.broadcast <- message
-		}
+		client.handleSendMessage(message)
+	case GetRoomsCmd:
+		client.handleGetRooms(message)
+	case GetRoomMessagesCmd:
+		client.handleGetRoomMessages(message)
 	default:
+		client.handleError(message, ErrUnknownCommand)
 		log.Printf("error: unknown command %s", message.Command)
 	}
+}
+
+// Handle a Send Message command by sending the message to the specified room.
+func (client *Client) handleSendMessage(message *Message) {
+	if room, ok := client.User.Rooms[message.Room]; ok {
+		room.broadcast <- message
+		// ack the message
+		ack := *message
+		ack.Content = SendMessageAckContent
+		client.send <- &ack
+	} else {
+		client.handleError(message, ErrRoomNotFound)
+		log.Printf("error: room %s not found", message.Room)
+	}
+}
+
+func (client *Client) handleGetRooms(message *Message) {
+	content, err := json.Marshal(client.User.Rooms)
+	if err != nil {
+		log.Panicf("panic: %v", err)
+		return
+	}
+	rsp := *message
+	rsp.Content = string(content)
+	client.send <- &rsp
+}
+
+func (client *Client) handleGetRoomMessages(message *Message) {
+	// Send the message to the room
+	log.Printf("warning: not implemented yet")
+	rsp := *message
+	rsp.Content = NotImplementedContent
+	client.send <- &rsp
+}
+
+func (client *Client) handleError(message *Message, err error) {
+	rsp := *message
+	rsp.Content = fmt.Sprintf(`{"status":"error","message":"%s"}`, err.Error())
+	client.send <- &rsp
 }
 
 // NewClient creates a new Client instance.

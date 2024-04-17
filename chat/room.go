@@ -1,34 +1,47 @@
 package chat
 
 type Room struct {
-	Id         string           `json:"id"`
-	Name       string           `json:"name"`
-	Driver     *string          `json:"driver"`
-	Users      map[string]*User `json:"users"`
-	register   chan *User
-	unregister chan *User
-	broadcast  chan *Message
-	connect    chan *Client
-	close      chan bool
+	Id     string           `json:"id"`
+	Name   string           `json:"name"`
+	Driver *string          `json:"driver"`
+	Users  map[string]*User `json:"users"`
+
+	register   chan *User // Channel for registering/joining a user
+	unregister chan *User // Channel for unregistering/leaving a user
+
+	broadcast chan *Message // Channel for broadcasting messages to all users in the room
+	close     chan bool     // Channel for closing the room
 }
 
 func (room *Room) Run() {
 	for {
 		select {
-		case client := <-room.connect:
-			room.Users[client.User.Id].Client = client
 		case user := <-room.register:
-			room.Users[user.Id] = user
+			room.Register(user)
 		case user := <-room.unregister:
-			delete(room.Users, user.Id)
+			room.Unregister(user)
 		case message := <-room.broadcast:
-			for _, user := range room.Users {
-				if user.Client != nil && message.Sender != user.Id {
-					user.Client.send <- message
-				}
-			}
+			room.Broadcast(message)
 		case <-room.close:
 			return
+		}
+	}
+}
+
+func (room *Room) Register(user *User) {
+	room.Users[user.Id] = user
+	user.Rooms[room.Id] = room
+}
+
+func (room *Room) Unregister(user *User) {
+	delete(room.Users, user.Id)
+	delete(user.Rooms, room.Id)
+}
+
+func (room *Room) Broadcast(message *Message) {
+	for _, user := range room.Users {
+		if user.Client != nil && message.Sender != user.Id {
+			user.Client.send <- message
 		}
 	}
 }
@@ -46,11 +59,10 @@ func NewRoom(id string, name string, driver *string) *Room {
 		Id:         id,
 		Name:       name,
 		Driver:     driver,
-		Users:      make(map[string]*User, 1),
+		Users:      make(map[string]*User, 4),
 		register:   make(chan *User, 2),
 		unregister: make(chan *User, 2),
-		broadcast:  make(chan *Message, 2),
-		connect:    make(chan *Client, 2),
+		broadcast:  make(chan *Message, 10),
 		close:      make(chan bool),
 	}
 }
