@@ -45,7 +45,7 @@ func (client *Client) Close() {
 	client.Server.unregister <- client
 }
 
-// ReadPump pump messages from the websocket conn to the engine.
+// ReadPump pump messages from the websocket connection and the client handles them.
 func (client *Client) ReadPump() {
 	// defer conn closing and engine unregistering
 	defer client.Close()
@@ -77,6 +77,7 @@ func (client *Client) ReadPump() {
 	}
 }
 
+// WritePump pumps messages from the client send channel to the WebSocket connection.
 func (client *Client) WritePump() {
 	// Start a ticker to send ping messages to the client
 	ticker := time.NewTicker(pingPeriod)
@@ -129,6 +130,7 @@ func (client *Client) WritePump() {
 	}
 }
 
+// HandleMessage handles a message depending on the command specified in the message.
 func (client *Client) HandleMessage(raw []byte) {
 	message := &Message{}
 	if err := json.Unmarshal(raw, message); err != nil {
@@ -179,6 +181,7 @@ func (client *Client) handleSendMessage(message *Message) {
 	}
 }
 
+// Handle a Get Rooms command by sending the client the rooms the user has joined to.
 func (client *Client) handleGetRooms(message *Message) {
 	content, err := json.Marshal(client.User.Rooms)
 	if err != nil {
@@ -190,6 +193,7 @@ func (client *Client) handleGetRooms(message *Message) {
 	client.send <- &rsp
 }
 
+// Handle a Get Room Messages command by sending the client the messages of the specified room.
 func (client *Client) handleGetRoomMessages(message *Message) {
 	// Send the message to the room
 	log.Printf("warning: not implemented yet")

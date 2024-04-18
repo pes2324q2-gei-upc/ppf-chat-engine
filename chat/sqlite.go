@@ -19,6 +19,7 @@ const (
 	);`
 )
 
+// InitDB initializes the database with the specified driver and source.
 func InitDB(driver string, source string) *sql.DB {
 	log.Printf("info: init %s database at %s", driver, source)
 
