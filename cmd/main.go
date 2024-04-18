@@ -31,16 +31,8 @@ func main() {
 	flag.Parse()
 
 	debug := getEnv("DEBUG", "false") == "true"
-	var userApiUrl string
-	var routeApiUrl string
-
-	if debug {
-		routeApiUrl = "http://localhost:8080"
-		userApiUrl = "http://localhost:8081"
-	} else {
-		routeApiUrl = "http://route-api:8080"
-		userApiUrl = "http://user-api:8081"
-	}
+	userApiUrl := getEnv("ROUTE_API_URL", "http://localhost:8080")
+	routeApiUrl := getEnv("ROUTE_API_URL", "http://localhost:8081")
 	mail := getEnv("PPF_MAIL", "admin@ppf.com")
 	pass := getEnv("PPF_PASS", "chatengine")
 
