@@ -63,11 +63,11 @@ func (engine *ChatEngine) Exists(id string) bool {
 
 // JoinRoom joins a user to the specified room in the chat engine.
 // The user must be loaded in the chat engine before connecting.
-func (engine *ChatEngine) JoinRoom(room string, user string) error {
+func (engine *ChatEngine) JoinRoom(room string, userId string) error {
 	// If the user is not in the engine, create it.
-	log.Printf("info: joining user %s to room %s", user, room)
-	if user, ok := engine.Users[user]; !ok {
-		log.Printf("error: user %s not found", user.Id)
+	log.Printf("info: joining user %s to room %s", userId, room)
+	if user, ok := engine.Users[userId]; !ok {
+		log.Printf("error: user %s not found", userId)
 		return ErrUserNotFound
 	} else if r, ok := engine.Rooms[room]; !ok {
 		log.Printf("error: room %s not found", room)
@@ -166,8 +166,11 @@ func (engine *ChatEngine) Login() {
 	)
 	r.Header.Add("Content-Type", "application/json")
 	response, err := engine.HttpClient.Do(r)
-	if err != nil || response.StatusCode != http.StatusOK {
-		log.Fatalf("error: user api login falied: %v", err)
+	if err != nil {
+		log.Fatalf("error: could not send login request: %v", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		log.Fatalf("error: user api login failed: %v", response.Status)
 	}
 	defer response.Body.Close()
 
