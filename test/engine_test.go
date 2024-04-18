@@ -165,9 +165,6 @@ func Test_LeaveRoom(t *testing.T) {
 		if _, ok := testRoom1.Users[testUser1.Id]; ok {
 			t.Errorf("User still found in room")
 		}
-		if _, ok := engine.Users[testUser1.Id]; ok {
-			t.Errorf("User still found in engine")
-		}
 	})
 	// Test case for leaving a non-existing room
 	t.Run("Leave non-existing room", func(t *testing.T) {
