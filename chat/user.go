@@ -42,15 +42,24 @@ func NewUser(id string, name string, client *Client) *User {
 
 type UserGateway struct{}
 
-func (gateway *UserGateway) ToRecord(user User) db.Record {
+func (gateway *UserGateway) ToRecord(user User) *db.UserRecord {
+	var rooms map[string]string = make(map[string]string, len(user.Rooms))
+	for roomId, room := range user.Rooms {
+		rooms[roomId] = room.Name
+	}
 	return &db.UserRecord{
-		Id: user.Id,
+		Id:    user.Id,
+		Name:  user.Name,
+		Rooms: rooms,
 	}
 }
 
-func (gateway *UserGateway) ToDomain(record db.Record) User {
-	return User{
-		Id:   record.Pk().(string),
-		Name: record.(*db.UserRecord).Name,
+func (gateway *UserGateway) ToDomain(record db.UserRecord) *User {
+	// TODO implement this
+	return &User{
+		Id:     record.Id,
+		Name:   record.Name,
+		Client: nil,
+		Rooms:  make(map[string]*Room),
 	}
 }

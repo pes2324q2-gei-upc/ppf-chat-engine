@@ -1,4 +1,4 @@
-package chat
+package sqlite
 
 import (
 	"database/sql"
@@ -17,8 +17,14 @@ const (
 		id VARCHAR(128) PRIMARY KEY,
 		name VARCHAR(128) NOT NULL
 	);`
+	CreateRoomUserTable = `CREATE TABLE IF NOT EXISTS room_user (
+		room VARCHAR(128) NOT NULL,
+		user VARCHAR(128) NOT NULL
+		FOREIGN KEY (room) REFERENCES rooms(id)
+		FOREIGN KEY (user) REFERENCES users(id)
+	)`
 	CreateMessagesTable = `CREATE TABLE IF NOT EXISTS messages (
-		ts TIMESTAMP
+		ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 		room VARCHAR(128) NOT NULL,
 		sender VARCHAR(128) NOT NULL,
 		content TEXT NOT NULL
@@ -29,7 +35,7 @@ const (
 )
 
 // InitDB initializes the database with the specified driver and source.
-func InitDB(driver string, source string) *sql.DB {
+func Init(driver string, source string) *sql.DB {
 	log.Printf("info: init %s database at %s", driver, source)
 
 	db, err := sql.Open(driver, source)
@@ -40,6 +46,9 @@ func InitDB(driver string, source string) *sql.DB {
 		log.Fatal(err)
 	}
 	if _, err := db.Exec(CreateUsersTable); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := db.Exec(CreateRoomUserTable); err != nil {
 		log.Fatal(err)
 	}
 	if _, err := db.Exec(CreateMessagesTable); err != nil {
