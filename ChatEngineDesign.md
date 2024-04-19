@@ -77,7 +77,6 @@
 4. Closes the WebSocket connection
 5. Removes the client from the running WebSocket server
 
-
 ### **User sends message**
 #### **User requests joined rooms**
 

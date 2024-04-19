@@ -8,17 +8,20 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
 
 // ChatEngine represents the engine that manages the chat rooms and users.
 type ChatEngine struct {
 	Configuration *Configuration // Configuration represents the configuration of the chat engine.
 	HttpClient    *http.Client
-	Server        *WsServer                    // Server represents the WebSocket server.
-	Users         map[string]*User             // Users represents the map of users in the chat engine.
-	Rooms         map[string]*Room             // Rooms represents the map of rooms in the chat engine.
-	UserRepo      Repository[User, UserRecord] // UserRepo represents the repository for users.
-	RoomRepo      Repository[Room, RoomRecord] // RoomRepo represents the repository for rooms.
+	Server        *WsServer        // Server represents the WebSocket server.
+	Users         map[string]*User // Users represents the map of users in the chat engine.
+	Rooms         map[string]*Room // Rooms represents the map of rooms in the chat engine.
+	UserRepo      db.Repository    // UserRepo represents the repository for users.
+	RoomRepo      db.Repository    // RoomRepo represents the repository for rooms.
+	MessageRepo   db.Repository    // MessageRepo represents the repository for messages.
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.
@@ -125,7 +128,7 @@ func (engine *ChatEngine) LoadUser(id string) error { // IMPROVE error handling
 		return ErrUserUnmarshalFailed
 	}
 	engine.Users[id] = user
-	engine.UserRepo.Add(*user)
+	engine.UserRepo.Add((&UserGateway{}).ToRecord(*user))
 	return nil
 }
 
@@ -141,7 +144,7 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error 
 	room := NewRoom(id, name, &user.Id)
 	engine.Rooms[id] = room
 	// Store the room in the repository.
-	engine.RoomRepo.Add(*room)
+	engine.RoomRepo.Add((&RoomGateway{}).ToRecord(*room))
 
 	go room.Run()
 	engine.JoinRoom(id, driver)

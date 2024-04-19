@@ -50,7 +50,12 @@ go test -v ./test
 | ------ | ------------------ | ---- | --------------------------------------------- |
 | GET    | /connect/<user_id> | USER | Initiates a websocket conn for a certain user |
 
+| GET    | /room/<room_id>/messages | SERVICE | Get the messages of a room                    |
+
 
 ### Authentication
 *Header*: `Authorization: Token <token>`
 *USER*: Requests must include a valid user token in the header
+
+
+<!-- zaaaaaaagh D: @AndreaFrutos -->

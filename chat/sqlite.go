@@ -17,6 +17,15 @@ const (
 		id VARCHAR(128) PRIMARY KEY,
 		name VARCHAR(128) NOT NULL
 	);`
+	CreateMessagesTable = `CREATE TABLE IF NOT EXISTS messages (
+		ts TIMESTAMP
+		room VARCHAR(128) NOT NULL,
+		sender VARCHAR(128) NOT NULL,
+		content TEXT NOT NULL
+		PRIMARY KEY (ts, room, sender)
+		FOREING KEY (room) REFERENCES rooms(id)
+		FOREING KEY (sender) REFERENCES users(id)
+	);`
 )
 
 // InitDB initializes the database with the specified driver and source.
@@ -31,6 +40,9 @@ func InitDB(driver string, source string) *sql.DB {
 		log.Fatal(err)
 	}
 	if _, err := db.Exec(CreateUsersTable); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := db.Exec(CreateMessagesTable); err != nil {
 		log.Fatal(err)
 	}
 	return db
