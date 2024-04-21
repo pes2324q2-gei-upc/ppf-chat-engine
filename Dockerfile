@@ -9,9 +9,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 RUN go install github.com/swaggo/swag/cmd/swag@latest
 
-COPY cmd cmd
 COPY api api
+COPY auth auth
 COPY chat chat
+COPY cmd cmd
+COPY config config
+COPY persist persist
 
 RUN swag init -d cmd,api,chat
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o chatengine ./cmd/main.go

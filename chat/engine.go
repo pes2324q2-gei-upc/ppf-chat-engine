@@ -112,9 +112,21 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 	return nil
 }
 
-func (engine *ChatEngine) LoadUser(id string) error { // IMPROVE error handling
+// LoadUser loads the user by getting it from the DB and, if it does not exist, from the user API.
+func (engine *ChatEngine) LoadUser(id string) error {
 	log.Printf("info: loading user %s", id)
 
+	userr, err := engine.UserRepo.Get(id)
+	if err != nil {
+		log.Printf("error: could not load user %s: %v", id, err)
+		return err
+	}
+	if userr != nil {
+		engine.Users[id] = RepoUserGw.ToDomain(*userr)
+		return nil
+	}
+
+	// not found in the DB, try to get it from the user API
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
 	r, _ := http.NewRequest(
 		http.MethodGet,
