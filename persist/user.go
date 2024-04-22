@@ -3,12 +3,12 @@ package persist
 type UserRepository interface {
 	Repository[UserRecord, string]
 
-	AddRoom(string, string) error
-	RemoveRoom(string, string) error
+	AddRoom(UserRecord, RoomRecord) error
+	RemoveRoom(UserRecord, RoomRecord) error
 }
 
 type UserRecord struct {
-	Id    string
+	Id    string `gorm:"primarykey"`
 	Name  string
-	Rooms map[string]string // map[roomId]Name
+	Rooms []*RoomRecord `gorm:"many2many:users_rooms;"` // many to many relationship
 }

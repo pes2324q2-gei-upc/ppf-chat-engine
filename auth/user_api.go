@@ -13,14 +13,14 @@ type UserApiCredentials struct {
 	AuthUrl  *url.URL
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	token    string
+	token    *string
 }
 
 func bytesReader(b []byte) io.Reader {
 	return bytes.NewReader(b)
 }
 
-func (creds *UserApiCredentials) newLoginRequest() (*http.Response, error) {
+func (creds UserApiCredentials) newLoginRequest() (*http.Response, error) {
 	bytes, err := json.Marshal(creds)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal credentials: %w", err)
@@ -32,7 +32,7 @@ func (creds *UserApiCredentials) newLoginRequest() (*http.Response, error) {
 	)
 }
 
-func (creds *UserApiCredentials) Login() error {
+func (creds UserApiCredentials) Login() error {
 	response, err := creds.newLoginRequest()
 	if err != nil {
 		return fmt.Errorf("could not build login request: %w", err)
@@ -45,10 +45,10 @@ func (creds *UserApiCredentials) Login() error {
 	if err := json.Unmarshal(body, &t); err != nil {
 		return fmt.Errorf("could not unmarshall token: %w", err)
 	}
-	creds.token = t.Token
+	creds.token = &t.Token
 	return nil
 }
 
-func (creds *UserApiCredentials) Token() string {
-	return creds.token
+func (creds UserApiCredentials) Token() string {
+	return *creds.token
 }

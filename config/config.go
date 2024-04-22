@@ -9,8 +9,8 @@ import (
 
 type Configuration struct {
 	Debug       bool
-	UserApiUrl  *url.URL
-	RouteApiUrl *url.URL
+	UserApiUrl  url.URL
+	RouteApiUrl url.URL
 	Credentials auth.TokenAuthenticator
 }
 

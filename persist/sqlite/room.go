@@ -23,7 +23,7 @@ type SqlRoomRepository struct {
 	Db *sql.DB
 }
 
-func (repo *SqlRoomRepository) Exists(id string) (bool, error) {
+func (repo SqlRoomRepository) Exists(id string) (bool, error) {
 	rows, err := repo.Db.Query("SELECT * FROM rooms WHERE id = ?", id)
 	if err != nil {
 		return false, err
@@ -32,17 +32,17 @@ func (repo *SqlRoomRepository) Exists(id string) (bool, error) {
 	return rows.Next(), nil
 }
 
-func (repo *SqlRoomRepository) Add(room persist.RoomRecord) error {
+func (repo SqlRoomRepository) Add(room persist.RoomRecord) error {
 	_, err := repo.Db.Exec("INSERT INTO rooms (id, name) VALUES (?, ?)", room.Id, room.Name)
 	return err
 }
 
-func (repo *SqlRoomRepository) Remove(id string) error {
+func (repo SqlRoomRepository) Remove(id string) error {
 	_, err := repo.Db.Exec("DELETE FROM rooms WHERE id = ?", id)
 	return err
 }
 
-func (repo *SqlRoomRepository) Get(id string) (*persist.RoomRecord, error) {
+func (repo SqlRoomRepository) Get(id string) (*persist.RoomRecord, error) {
 	row := repo.Db.QueryRow("SELECT id, name FROM rooms WHERE id = ?", id)
 	room := &persist.RoomRecord{}
 	err := row.Scan(room.Id, room.Name)
@@ -52,7 +52,7 @@ func (repo *SqlRoomRepository) Get(id string) (*persist.RoomRecord, error) {
 	return room, nil
 }
 
-func (repo *SqlRoomRepository) GetAll() ([]*persist.RoomRecord, error) {
+func (repo SqlRoomRepository) GetAll() ([]*persist.RoomRecord, error) {
 	rows, err := repo.Db.Query("SELECT id, name FROM rooms", nil)
 	if err != nil {
 		return nil, err
@@ -61,12 +61,12 @@ func (repo *SqlRoomRepository) GetAll() ([]*persist.RoomRecord, error) {
 	return parseRoomRows(rows)
 }
 
-func (repo *SqlRoomRepository) AddUser(id string, userId string) error {
-	_, err := repo.Db.Exec("INSERT INTO room_user (room, user) VALUES (?, ?)", id, userId)
+func (repo SqlRoomRepository) AddUser(room persist.RoomRecord, user persist.UserRecord) error {
+	_, err := repo.Db.Exec("INSERT INTO room_user (room, user) VALUES (?, ?)", room.Id, user.Id)
 	return err
 }
 
-func (repo *SqlRoomRepository) RemoveUser(id string, userId string) error {
-	_, err := repo.Db.Exec("DELETE FROM room_user WHERE room = ? AND user = ?", id, userId)
+func (repo SqlRoomRepository) RemoveUser(room persist.RoomRecord, user persist.UserRecord) error {
+	_, err := repo.Db.Exec("DELETE FROM room_user WHERE room = ? AND user = ?", user.Id, room.Id)
 	return err
 }

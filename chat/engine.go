@@ -11,26 +11,18 @@ import (
 
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/auth"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/config"
-	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
-	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist/sqlite"
-)
 
-var (
-	RepoUserGw = &UserGateway{}
-	// RepoRoomGw = &RoomGateway{}
-	// RepoMsgGw  = &MessageGateway{}
+	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist/sqlite"
 )
 
 // ChatEngine represents the engine that manages the chat rooms and users.
 type ChatEngine struct {
-	Configuration *config.Configuration // Configuration represents the configuration of the chat engine.
-	HttpClient    *http.Client
-	Server        *WsServer            // Server represents the WebSocket server.
-	Users         map[string]*User     // Users represents the map of users in the chat engine.
-	Rooms         map[string]*Room     // Rooms represents the map of rooms in the chat engine.
-	UserRepo      db.UserRepository    // UserRepo represents the repository for users.
-	RoomRepo      db.RoomRepository    // RoomRepo represents the repository for rooms.
-	MessageRepo   db.MessageRepository // MessageRepo represents the repository for messages.
+	GatewayManager
+	config.Configuration // Configuration represents the configuration of the chat engine.
+	HttpClient           *http.Client
+	Server               *WsServer        // Server represents the WebSocket server.
+	Users                map[string]*User // Users represents the map of users in the chat engine.
+	Rooms                map[string]*Room // Rooms represents the map of rooms in the chat engine.
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.
@@ -115,16 +107,12 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 // LoadUser loads the user by getting it from the DB and, if it does not exist, from the user API.
 func (engine *ChatEngine) LoadUser(id string) error {
 	log.Printf("info: loading user %s", id)
-
-	userr, err := engine.UserRepo.Get(id)
+	user, err := engine.UserGateway().Get(id)
 	if err != nil {
 		log.Printf("error: could not load user %s: %v", id, err)
 		return err
 	}
-	if userr != nil {
-		engine.Users[id] = RepoUserGw.ToDomain(*userr)
-		return nil
-	}
+	engine.Users[id] = user
 
 	// not found in the DB, try to get it from the user API
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
@@ -143,7 +131,7 @@ func (engine *ChatEngine) LoadUser(id string) error {
 	defer response.Body.Close()
 
 	body, _ := io.ReadAll(response.Body)
-	user := NewUser("", "", nil)
+	user = NewUser("", "", nil)
 	if err = json.Unmarshal(body, user); err != nil {
 		log.Printf("error: could not load user %s: %v", id, ErrUserUnmarshalFailed)
 		return ErrUserUnmarshalFailed
@@ -169,11 +157,12 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error 
 	return nil
 }
 
+// NewChatEngine creates a new chat engine with the intended application defaults.
 func NewDefaultChatEngine(db *sql.DB) (*ChatEngine, error) {
 	useUrl, _ := url.Parse(config.GetEnv("USER_API_URL", "http://localhost:8081"))
 	routeUrl, _ := url.Parse(config.GetEnv("ROUTE_API_URL", "http://localhost:8080"))
 
-	credentials := &auth.UserApiCredentials{
+	credentials := auth.UserApiCredentials{
 		AuthUrl:  useUrl,
 		Email:    config.GetEnv("PPF_MAIL", "admin@ppf.com"),
 		Password: config.GetEnv("PPF_PASS", "chatengine"),
@@ -181,20 +170,33 @@ func NewDefaultChatEngine(db *sql.DB) (*ChatEngine, error) {
 	if err := credentials.Login(); err != nil {
 		return nil, err
 	}
-	configuration := &config.Configuration{
+	configuration := config.Configuration{
 		Debug:       config.GetEnv("DEBUG", "false") == "true",
-		UserApiUrl:  useUrl,
-		RouteApiUrl: routeUrl,
+		UserApiUrl:  *useUrl,
+		RouteApiUrl: *routeUrl,
 		Credentials: credentials,
 	}
+	gwm := GatewayManager{
+		userGw: UserGateway{
+			repo: sqlite.SqlUserRepository{Db: db},
+		},
+		roomGw: RoomGateway{
+			repo: sqlite.SqlRoomRepository{Db: db},
+		},
+		msgGw: MessageGateway{
+			repo: sqlite.SqlMessageRepository{Db: db},
+		},
+	}
+	gwm.userGw.manager = &gwm
+	gwm.roomGw.manager = &gwm
+	gwm.msgGw.manager = &gwm
+
 	engine := &ChatEngine{
-		Configuration: configuration,
-		HttpClient:    http.DefaultClient,
-		Users:         make(map[string]*User),
-		Rooms:         make(map[string]*Room),
-		UserRepo:      &sqlite.SqlUserRepository{Db: db},
-		RoomRepo:      &sqlite.SqlRoomRepository{Db: db},
-		MessageRepo:   &sqlite.SqlMessageRepository{Db: db},
+		Configuration:  configuration,
+		HttpClient:     http.DefaultClient,
+		GatewayManager: gwm,
+		Users:          make(map[string]*User),
+		Rooms:          make(map[string]*Room),
 	}
 	return engine, nil
 }

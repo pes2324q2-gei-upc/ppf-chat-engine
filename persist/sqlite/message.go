@@ -23,7 +23,7 @@ type SqlMessageRepository struct {
 	Db *sql.DB
 }
 
-func (repo *SqlMessageRepository) Exists(id persist.MessageKey) (bool, error) {
+func (repo SqlMessageRepository) Exists(id persist.MessageKey) (bool, error) {
 	rows, err := repo.Db.Query("SELECT * FROM messages WHERE room = ? AND sender = ?", id.Room, id.Sender)
 	if err != nil {
 		return false, nil
@@ -32,17 +32,17 @@ func (repo *SqlMessageRepository) Exists(id persist.MessageKey) (bool, error) {
 	return rows.Next(), nil
 }
 
-func (repo *SqlMessageRepository) Add(msg persist.MessageRecord) error {
+func (repo SqlMessageRepository) Add(msg persist.MessageRecord) error {
 	_, err := repo.Db.Exec("INSERT INTO messages (room, sender, content) VALUES (?, ?, ?, ?)", msg.Room, msg.Sender, msg.Content)
 	return err
 }
 
-func (repo *SqlMessageRepository) Remove(pk persist.MessageKey) error {
+func (repo SqlMessageRepository) Remove(pk persist.MessageKey) error {
 	_, err := repo.Db.Exec("DELETE FROM messages WHERE room = ? AND sender = ?", pk.Room, pk.Sender)
 	return err
 }
 
-func (repo *SqlMessageRepository) Get(id persist.MessageKey) (*persist.MessageRecord, error) {
+func (repo SqlMessageRepository) Get(id persist.MessageKey) (*persist.MessageRecord, error) {
 	row := repo.Db.QueryRow("SELECT * FROM messages WHERE room = ? AND sender = ?", id.Room, id.Sender)
 	msg := persist.MessageRecord{}
 	err := row.Scan(&msg.Room, &msg.Sender, &msg.Content)
@@ -52,7 +52,7 @@ func (repo *SqlMessageRepository) Get(id persist.MessageKey) (*persist.MessageRe
 	return &msg, nil
 }
 
-func (repo *SqlMessageRepository) GetAll() ([]*persist.MessageRecord, error) {
+func (repo SqlMessageRepository) GetAll() ([]*persist.MessageRecord, error) {
 	rows, err := repo.Db.Query("SELECT * FROM messages")
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (repo *SqlMessageRepository) GetAll() ([]*persist.MessageRecord, error) {
 	return parseRows(rows)
 }
 
-func (repo *SqlMessageRepository) GetByRoom(room string) ([]*persist.MessageRecord, error) {
+func (repo SqlMessageRepository) GetByRoom(room string) ([]*persist.MessageRecord, error) {
 	rows, err := repo.Db.Query("SELECT * FROM messages WHERE room = ?", room)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (repo *SqlMessageRepository) GetByRoom(room string) ([]*persist.MessageReco
 	return parseRows(rows)
 }
 
-func (repo *SqlMessageRepository) GetBySender(sender string) ([]*persist.MessageRecord, error) {
+func (repo SqlMessageRepository) GetBySender(sender string) ([]*persist.MessageRecord, error) {
 	rows, err := repo.Db.Query("SELECT * FROM messages WHERE sender = ?", sender)
 	if err != nil {
 		return nil, err

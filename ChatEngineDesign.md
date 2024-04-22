@@ -63,12 +63,13 @@
 7. App removes the room from the cached data.
 
 ### **User connects**
-1. User connects to the WebSocket server via GET /connect/<userId>
-2. CE checks if the user exists in the CE
-    - If the user does not exist, CE requests the user info from the UserAPI
-3. CE opens a WebSocket connection for the user and creates a client object
-4. Assigns the client to the user and the user to the client
-5. Registers the client to the running WebSocket server
+- The DB is empty
+1. User connects to the ws connection
+2. User not found in the DB and the user is requested to the UserAPI
+3. The rooms the user belongs to are not found in the DB and are requested to the RouteAPI
+4. Rooms are added to the user and the user is added to the rooms
+5. The user is added to the DB
+6. The room is added to the DB
 
 ### **User disconnects**
 1. User disconnects from the ws connection

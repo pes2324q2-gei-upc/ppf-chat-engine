@@ -1,5 +1,7 @@
 package persist
 
+import "time"
+
 type MessageKey struct {
 	Room   string
 	Sender string
@@ -13,7 +15,10 @@ type MessageRepository interface {
 }
 
 type MessageRecord struct {
-	Room    string
-	Sender  string
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+
+	Room    RoomRecord // Belongs To relation
+	Sender  UserRecord // Belongs To relation
 	Content string
 }

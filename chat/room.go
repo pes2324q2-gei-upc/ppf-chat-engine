@@ -1,5 +1,7 @@
 package chat
 
+import db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
+
 type Room struct {
 	Id     string           `json:"id"`
 	Name   string           `json:"name"`
@@ -64,5 +66,24 @@ func NewRoom(id string, name string, driver *string) *Room {
 		unregister: make(chan *User, 2),
 		broadcast:  make(chan *Message, 10),
 		close:      make(chan bool),
+	}
+}
+
+type RoomGateway struct {
+	repo    db.RoomRepository
+	manager *GatewayManager
+}
+
+func (gateway *RoomGateway) toRecord(room *Room) db.RoomRecord {
+	return db.RoomRecord{
+		Id:   room.Id,
+		Name: room.Name,
+	}
+}
+
+func (gateway *RoomGateway) toDomain(record *db.RoomRecord) Room {
+	return Room{
+		Id:   record.Id,
+		Name: record.Name,
 	}
 }
