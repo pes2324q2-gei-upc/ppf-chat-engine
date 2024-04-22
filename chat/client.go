@@ -169,7 +169,7 @@ func (client *Client) HandleMessage(raw []byte) {
 
 // Handle a Send Message command by sending the message to the specified room.
 func (client *Client) handleSendMessage(message *Message) {
-	if room, ok := client.User.Rooms[message.Room]; ok {
+	if room, ok := client.Server.Engine.Rooms[message.Room]; ok {
 		room.broadcast <- message
 		// ack the message
 		ack := *message
@@ -183,7 +183,8 @@ func (client *Client) handleSendMessage(message *Message) {
 
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
 func (client *Client) handleGetRooms(message *Message) {
-	content, err := json.Marshal(client.User.Rooms)
+	rooms := client.Server.Engine.GetUserRooms(message.Sender)
+	content, err := json.Marshal(rooms)
 	if err != nil {
 		log.Panicf("panic: %v", err)
 		return

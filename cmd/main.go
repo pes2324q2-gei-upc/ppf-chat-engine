@@ -11,7 +11,7 @@ import (
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/api"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 	_ "github.com/pes2324q2-gei-upc/ppf-chat-engine/docs"
-	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist/sqlite"
+	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 	swag "github.com/swaggo/http-swagger/v2"
 )
 
@@ -28,7 +28,7 @@ func Run() error {
 	dbPath := flag.String("db", "chat.db", "database path")
 	flag.Parse()
 
-	db := sqlite.Init("sqlite3", *dbPath)
+	db := persist.Init(*dbPath)
 	engine, err := chat.NewDefaultChatEngine(db)
 	if err != nil {
 		return err

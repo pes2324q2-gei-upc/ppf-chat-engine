@@ -80,7 +80,6 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 			return
 		}
 	}
-
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		if errors.Is(err, chat.ErrUserNotFound) {
 			http.Error(w, err.Error(), http.StatusNotFound)

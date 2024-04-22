@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,8 +10,8 @@ import (
 
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/auth"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/config"
-
-	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist/sqlite"
+	"github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
+	"gorm.io/gorm"
 )
 
 // ChatEngine represents the engine that manages the chat rooms and users.
@@ -32,13 +31,6 @@ func (engine *ChatEngine) CloseRoom(id string) error {
 		return ErrRoomNotFound
 	}
 	room.close <- true
-	// If a user is not in any room, close the connection and delete it.
-	for _, user := range room.Users {
-		if len(user.Rooms) == 0 {
-			engine.Server.unregister <- user.Client
-			delete(engine.Users, user.Id)
-		}
-	}
 	delete(engine.Rooms, id)
 	return nil
 }
@@ -77,7 +69,6 @@ func (engine *ChatEngine) JoinRoom(room string, userId string) error {
 		log.Printf("error: room %s not found", room)
 		return ErrRoomNotFound
 	} else {
-		user.Rooms[room] = r
 		r.register <- user
 	}
 	return nil
@@ -96,11 +87,6 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 		return ErrRoomNotFound
 	}
 	room.unregister <- user
-	// If the user is in no rooms, close the connection and delete it.
-	if len(user.Rooms) == 0 {
-		engine.Server.unregister <- user.Client
-		delete(engine.Users, userId)
-	}
 	return nil
 }
 
@@ -108,11 +94,10 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 func (engine *ChatEngine) LoadUser(id string) error {
 	log.Printf("info: loading user %s", id)
 	user, err := engine.UserGateway().Get(id)
-	if err != nil {
-		log.Printf("error: could not load user %s: %v", id, err)
-		return err
+	if err == nil {
+		engine.Users[id] = user
+		return nil
 	}
-	engine.Users[id] = user
 
 	// not found in the DB, try to get it from the user API
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
@@ -157,8 +142,13 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error 
 	return nil
 }
 
+func (engine *ChatEngine) GetUserRooms(id string) []*Room {
+	// TODO implement, get from DB
+	return make([]*Room, 0)
+}
+
 // NewChatEngine creates a new chat engine with the intended application defaults.
-func NewDefaultChatEngine(db *sql.DB) (*ChatEngine, error) {
+func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 	useUrl, _ := url.Parse(config.GetEnv("USER_API_URL", "http://localhost:8081"))
 	routeUrl, _ := url.Parse(config.GetEnv("ROUTE_API_URL", "http://localhost:8080"))
 
@@ -178,13 +168,13 @@ func NewDefaultChatEngine(db *sql.DB) (*ChatEngine, error) {
 	}
 	gwm := GatewayManager{
 		userGw: UserGateway{
-			repo: sqlite.SqlUserRepository{Db: db},
+			repo: persist.UserRepository{DB: db},
 		},
 		roomGw: RoomGateway{
-			repo: sqlite.SqlRoomRepository{Db: db},
+			repo: persist.RoomRepository{DB: db},
 		},
 		msgGw: MessageGateway{
-			repo: sqlite.SqlMessageRepository{Db: db},
+			repo: persist.MessageRepository{DB: db},
 		},
 	}
 	gwm.userGw.manager = &gwm

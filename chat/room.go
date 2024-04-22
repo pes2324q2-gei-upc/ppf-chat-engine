@@ -32,12 +32,10 @@ func (room *Room) Run() {
 
 func (room *Room) Register(user *User) {
 	room.Users[user.Id] = user
-	user.Rooms[room.Id] = room
 }
 
 func (room *Room) Unregister(user *User) {
 	delete(room.Users, user.Id)
-	delete(user.Rooms, room.Id)
 }
 
 func (room *Room) Broadcast(message *Message) {
@@ -70,20 +68,6 @@ func NewRoom(id string, name string, driver *string) *Room {
 }
 
 type RoomGateway struct {
-	repo    db.RoomRepository
 	manager *GatewayManager
-}
-
-func (gateway *RoomGateway) toRecord(room *Room) db.RoomRecord {
-	return db.RoomRecord{
-		Id:   room.Id,
-		Name: room.Name,
-	}
-}
-
-func (gateway *RoomGateway) toDomain(record *db.RoomRecord) Room {
-	return Room{
-		Id:   record.Id,
-		Name: record.Name,
-	}
+	repo    db.RoomRepository
 }
