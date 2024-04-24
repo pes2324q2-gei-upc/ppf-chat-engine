@@ -73,7 +73,15 @@ func (gw *UserGateway) Exists(pk string) (bool, error) {
 // Get returns a loaded User from the DB
 // CAREFUL! This User rooms are nil pointers (lazy loaded)
 func (gw *UserGateway) Get(pk string) (*User, error) {
-	return nil, nil
+	userr, err := gw.repo.Get(pk)
+	if err != nil {
+		return nil, err
+	}
+	return &User{
+		Id:     userr.Id,
+		Name:   userr.Name,
+		Client: nil,
+	}, nil
 }
 
 func (gw *UserGateway) GetAll() ([]*User, error) {

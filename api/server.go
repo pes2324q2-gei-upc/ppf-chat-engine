@@ -75,10 +75,7 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	}
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
-		if err := ctrl.Engine.LoadUser(id); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
+		ctrl.Engine.InitUser(id)
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		if errors.Is(err, chat.ErrUserNotFound) {
@@ -110,7 +107,7 @@ func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.
 	ctrl.Engine.OpenRoom(room.Id, room.Name, room.Driver)
 	// Join user to room
 	if !ctrl.Engine.Exists(room.Driver) {
-		ctrl.Engine.LoadUser(room.Driver)
+		ctrl.Engine.InitUser(room.Driver)
 	}
 	ctrl.Engine.JoinRoom(room.Id, room.Driver)
 	w.WriteHeader(http.StatusCreated)
@@ -134,7 +131,7 @@ func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Join user to room
 	if !ctrl.Engine.Exists(room.Driver) {
-		ctrl.Engine.LoadUser(room.Driver)
+		ctrl.Engine.InitUser(room.Driver)
 	}
 	ctrl.Engine.JoinRoom(room.Id, room.Driver)
 	w.WriteHeader(http.StatusOK)

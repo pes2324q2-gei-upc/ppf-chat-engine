@@ -166,7 +166,9 @@ _Response:_
         "messages": [
             {
                 "content": "<message>",
-                "sender": "<user_id>",
+                "sender": {
+                    "username":
+                },
                 "timestamp": "<datetime ISO 8601>"
             },
             ...
@@ -220,4 +222,7 @@ An error will have the following structure:
 ## Design Decisions
 ### DD1
 Every time the CE starts it requests all routes and users. While this is not the most efficient way to handle this, it is the simplest way to ensure that the CE has all the data it needs to function. **A trade-off between performance and simplicity.** The CE could be optimized to only request the routes and users that have changed since the last time it started or queue room creation at the RouteAPI.
+
+
+
 

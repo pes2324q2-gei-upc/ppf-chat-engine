@@ -71,3 +71,25 @@ type RoomGateway struct {
 	manager *GatewayManager
 	repo    db.RoomRepository
 }
+
+func (gw *RoomGateway) Add(user *User) error {
+	return nil
+}
+
+func (gw *RoomGateway) Exists(pk string) (bool, error) {
+	return gw.repo.Exists(pk)
+}
+
+// Get returns a loaded User from the DB
+// CAREFUL! This User rooms are nil pointers (lazy loaded)
+func (gw *RoomGateway) Get(pk string) (*User, error) {
+	userr, err := gw.repo.Get(pk)
+	if err != nil {
+		return nil, err
+	}
+	return &User{
+		Id:     userr.Id,
+		Name:   userr.Name,
+		Client: nil,
+	}, nil
+}

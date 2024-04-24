@@ -55,7 +55,6 @@ func (msg *Message) UnmarshalJSON(data []byte) error {
 		}
 	case GetRoomsCmd:
 		// For GetRooms, only sender is required
-		// TODO why?
 		if msg.Sender == "" {
 			return ErrMessageMalformed
 		}

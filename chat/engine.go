@@ -90,39 +90,55 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 	return nil
 }
 
-// LoadUser loads the user by getting it from the DB and, if it does not exist, from the user API.
-func (engine *ChatEngine) LoadUser(id string) error {
-	log.Printf("info: loading user %s", id)
-	user, err := engine.UserGateway().Get(id)
-	if err == nil {
-		engine.Users[id] = user
-		return nil
+func (engine *ChatEngine) InitUser(id string) error {
+	user, err := engine.RequestUser(id)
+	if err != nil {
+		return err
 	}
+	// Get the routes from a user
+	routes, err := engine.RequestUserRoutes(id)
+	engine.AddUser(user)
+	if err != nil {
+		return err
+	}
+	// for each route
+	for _, route := range routes {
+		// for each route open a room
+		engine.
+	}
+	return nil
+}
 
-	// not found in the DB, try to get it from the user API
+// RequestUser loads the user by getting it from the DB and, if it does not exist, from the user API.
+func (engine *ChatEngine) RequestUser(id string) (*User, error) {
+	log.Printf("info: loading user %s", id)
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
-	r, _ := http.NewRequest(
+	userReq, _ := http.NewRequest(
 		http.MethodGet,
 		usrUrl.String(),
 		nil,
 	)
-	r.Header.Add("Authorization", fmt.Sprintf("Token %s", engine.Configuration.Credentials.Token()))
-	response, err := engine.HttpClient.Do(r)
+	userReq.Header.Add("Authorization", fmt.Sprintf("Token %s", engine.Configuration.Credentials.Token()))
+	response, err := engine.HttpClient.Do(userReq)
 
 	if err != nil || response.StatusCode != http.StatusOK {
 		log.Printf("error: could not load user %s: %v", id, ErrUserApiRequestFailed)
-		return ErrUserApiRequestFailed
+		return nil, ErrUserApiRequestFailed
 	}
 	defer response.Body.Close()
 
 	body, _ := io.ReadAll(response.Body)
-	user = NewUser("", "", nil)
+	user := NewUser("", "", nil)
 	if err = json.Unmarshal(body, user); err != nil {
 		log.Printf("error: could not load user %s: %v", id, ErrUserUnmarshalFailed)
-		return ErrUserUnmarshalFailed
+		return nil, ErrUserUnmarshalFailed
 	}
-	engine.Users[id] = user
-	return nil
+	return user, nil
+}
+
+func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
+	// request user routes
+	// if route already in system do no
 }
 
 // OpenRoom creates a new room with the specified ID, name and driver user, and adds it to the engine.
@@ -140,6 +156,13 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error 
 	go room.Run()
 	engine.JoinRoom(id, driver)
 	return nil
+}
+
+func (engine *ChatEngine) AddUser(user *User) {
+	engine.Users[user.Id] = user
+}
+func (engine *ChatEngine) AddRooms(rooms []*Room) {
+	rooms[0].Users
 }
 
 func (engine *ChatEngine) GetUserRooms(id string) []*Room {

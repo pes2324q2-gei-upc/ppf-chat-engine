@@ -20,8 +20,8 @@ type RoomRepository struct {
 	*gorm.DB
 }
 
-func (repo RoomRepository) Exists(id int) (bool, error) {
-	r := repo.First(&RoomRecord{})
+func (repo RoomRepository) Exists(pk string) (bool, error) {
+	r := repo.First(&RoomRecord{Id: pk})
 	return r.RowsAffected >= 1, r.Error
 }
 
