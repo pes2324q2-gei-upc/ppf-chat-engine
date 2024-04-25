@@ -183,7 +183,7 @@ func (client *Client) handleSendMessage(message *Message) {
 
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
 func (client *Client) handleGetRooms(message *Message) {
-	rooms := client.Server.Engine.GetUserRooms(message.Sender)
+	rooms := client.Engine().GetUserRooms(message.Sender)
 	content, err := json.Marshal(rooms)
 	if err != nil {
 		log.Panicf("panic: %v", err)
@@ -207,6 +207,10 @@ func (client *Client) handleError(message *Message, err error) {
 	rsp := *message
 	rsp.Content = fmt.Sprintf(`{"status":"error","message":"%s"}`, err.Error())
 	client.send <- &rsp
+}
+
+func (client *Client) Engine() *ChatEngine {
+	return client.Server.Engine
 }
 
 // NewClient creates a new Client instance.

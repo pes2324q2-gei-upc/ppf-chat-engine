@@ -24,6 +24,10 @@ type ChatEngine struct {
 	Rooms                map[string]*Room // Rooms represents the map of rooms in the chat engine.
 }
 
+func (engine *ChatEngine) AddUser(user *User) {
+	engine.Users[user.Id] = user
+}
+
 // CloseRoom closes the specified room and removes it from the chat engine.
 func (engine *ChatEngine) CloseRoom(id string) error {
 	room, ok := engine.Rooms[id]
@@ -55,6 +59,50 @@ func (engine *ChatEngine) ConnectUser(id string, w http.ResponseWriter, r *http.
 func (engine *ChatEngine) Exists(id string) bool {
 	_, ok := engine.Users[id]
 	return ok
+}
+
+// InitUser initializes a user in the chat engine by:
+// 1. Requesting the user data at the UserAPI
+// 2. Requesting the routes that belong to the user (as passenger or driver) at the RouteAPI
+// 3. Adding the user to the engine
+// 4. Opening a room for each route
+// 5. Requesting all users from a route
+// 6. Adding those users to the engine
+
+func (engine *ChatEngine) InitUser(id string) error {
+	// Get the user from UserAPI
+	user, err := engine.RequestUser(id)
+	if err != nil {
+		return err
+	}
+	// Get the routes from a user
+	routes, err := engine.RequestUserRoutes(id)
+	if err != nil {
+		return err
+	}
+	engine.AddUser(user)
+	// for each route open a room
+	for _, route := range routes {
+		// but request driver user first and join it
+		driver, err := engine.RequestUser(route.Driver.Id)
+		if err != nil {
+			return err
+		}
+		engine.AddUser(driver)
+		engine.OpenRoom(route.Id, route.Name, driver.Id)
+		engine.JoinRoom(driver.Id, route.Id)
+		// then request all passengers from a route
+		users, err := engine.RequestRoutePassengers(route.Id)
+		if err != nil {
+			return err
+		}
+		for _, user := range users {
+			// and join them to the room
+			engine.AddUser(user)
+			engine.JoinRoom(route.Id, user.Id)
+		}
+	}
+	return nil
 }
 
 // JoinRoom joins a user to the specified room in the chat engine.
@@ -90,23 +138,25 @@ func (engine *ChatEngine) LeaveRoom(roomId string, userId string) error {
 	return nil
 }
 
-func (engine *ChatEngine) InitUser(id string) error {
-	user, err := engine.RequestUser(id)
-	if err != nil {
-		return err
+// OpenRoom creates a new room with the specified ID, name and driver user, and adds it to the engine.
+// The driver user must be loaded in the chat engine before opening the room.
+func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error {
+	log.Printf("info: opening room %s", id)
+	user, ok := engine.Users[driver]
+	if !ok {
+		log.Printf("error: driver %s not found", driver)
+		return ErrUserNotFound
 	}
-	// Get the routes from a user
-	routes, err := engine.RequestUserRoutes(id)
-	engine.AddUser(user)
-	if err != nil {
-		return err
-	}
-	// for each route
-	for _, route := range routes {
-		// for each route open a room
-		engine.
-	}
+	room := NewRoom(id, name, &user.Id)
+	engine.Rooms[id] = room
+
+	go room.Run()
+	engine.JoinRoom(id, driver)
 	return nil
+}
+
+func (engine *ChatEngine) RequestRoutePassengers(id string) ([]*User, error) {
+	return nil, nil
 }
 
 // RequestUser loads the user by getting it from the DB and, if it does not exist, from the user API.
@@ -137,37 +187,7 @@ func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 }
 
 func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
-	// request user routes
-	// if route already in system do no
-}
-
-// OpenRoom creates a new room with the specified ID, name and driver user, and adds it to the engine.
-// The driver user must be loaded in the chat engine before opening the room.
-func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error {
-	log.Printf("info: opening room %s", id)
-	user, ok := engine.Users[driver]
-	if !ok {
-		log.Printf("error: driver %s not found", driver)
-		return ErrUserNotFound
-	}
-	room := NewRoom(id, name, &user.Id)
-	engine.Rooms[id] = room
-
-	go room.Run()
-	engine.JoinRoom(id, driver)
-	return nil
-}
-
-func (engine *ChatEngine) AddUser(user *User) {
-	engine.Users[user.Id] = user
-}
-func (engine *ChatEngine) AddRooms(rooms []*Room) {
-	rooms[0].Users
-}
-
-func (engine *ChatEngine) GetUserRooms(id string) []*Room {
-	// TODO implement, get from DB
-	return make([]*Room, 0)
+	return nil, nil
 }
 
 // NewChatEngine creates a new chat engine with the intended application defaults.
