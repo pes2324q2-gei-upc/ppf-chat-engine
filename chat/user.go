@@ -29,7 +29,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	type Alias User
 	aux := &struct {
 		Id   int    `json:"id"`
-		Name string `json:"name"`
+		Name string `json:"username"`
 		*Alias
 	}{
 		Alias: (*Alias)(u),

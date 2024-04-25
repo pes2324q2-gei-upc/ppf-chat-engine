@@ -75,7 +75,9 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	}
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
-		ctrl.Engine.InitUser(id)
+		if err := ctrl.Engine.InitUser(id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		if errors.Is(err, chat.ErrUserNotFound) {

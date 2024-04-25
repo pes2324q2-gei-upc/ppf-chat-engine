@@ -190,11 +190,14 @@ func (engine *ChatEngine) RequestRoutePassengers(id string) ([]*User, error) {
 func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 	log.Printf("info: loading user %s", id)
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
-	userReq, _ := http.NewRequest(
+	userReq, err := http.NewRequest(
 		http.MethodGet,
 		usrUrl.String(),
 		nil,
 	)
+	if err != nil {
+		log.Fatalf("falied to build user request")
+	}
 	userReq.Header.Add("Authorization", fmt.Sprintf("Token %s", engine.Configuration.Credentials.Token()))
 	response, err := engine.HttpClient.Do(userReq)
 
@@ -261,8 +264,8 @@ func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 	useUrl, _ := url.Parse(config.GetEnv("USER_API_URL", "http://localhost:8081"))
 	routeUrl, _ := url.Parse(config.GetEnv("ROUTE_API_URL", "http://localhost:8080"))
 
-	credentials := auth.UserApiCredentials{
-		AuthUrl:  useUrl,
+	credentials := &auth.UserApiCredentials{
+		AuthUrl:  useUrl.JoinPath("login"),
 		Email:    config.GetEnv("PPF_MAIL", "admin@ppf.com"),
 		Password: config.GetEnv("PPF_PASS", "chatengine"),
 	}
@@ -286,13 +289,21 @@ func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 			repo: persist.MessageRepository{Db: db},
 		},
 	}
+	wsserver := &WsServer{
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		store:      make(chan *Action),
+		Clients:    make(map[*Client]bool),
+	}
 
 	engine := &ChatEngine{
 		Configuration:  configuration,
 		HttpClient:     http.DefaultClient,
+		Server:         wsserver,
 		GatewayManager: gwm,
 		Users:          make(map[string]*User),
 		Rooms:          make(map[string]*Room),
 	}
+	wsserver.Engine = engine
 	return engine, nil
 }
