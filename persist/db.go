@@ -15,8 +15,8 @@ func Init(source string) *gorm.DB {
 	if err != nil {
 		log.Fatalf("error: failed to connect database")
 	}
-	db.AutoMigrate(&UserRecord{})
-	db.AutoMigrate(&RoomRecord{})
-	db.AutoMigrate(&MessageRecord{})
+	db.AutoMigrate(&User{})
+	db.AutoMigrate(&Room{})
+	db.AutoMigrate(&Message{})
 	return db
 }

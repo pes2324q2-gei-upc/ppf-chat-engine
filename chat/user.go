@@ -9,9 +9,20 @@ import (
 
 // User is the struct that will contain the information for a user that belongs at least to one room.
 type User struct {
-	Id     string  `json:"id"`
-	Name   string  `json:"username"`
-	Client *Client // Web socket client that will use the user when connecting to the chat engine.
+	Id     string      `json:"id"`
+	Name   string      `json:"username"`
+	Client *Client     `json:"-"` // Web socket client that will use the user when connecting to the chat engine.
+	Engine *ChatEngine `json:"-"`
+
+	Rooms map[string]bool `json:"-"`
+}
+
+func (u *User) GetRooms() []*Room {
+	rooms := make([]*Room, len(u.Rooms))
+	for id := range u.Rooms {
+		rooms = append(rooms, u.Engine.Rooms[id])
+	}
+	return rooms
 }
 
 func (u *User) UnmarshalJSON(data []byte) error {
@@ -44,50 +55,51 @@ type UserGateway struct {
 	repo    db.UserRepository
 }
 
-func (gw *UserGateway) UserRecordToUser(record db.UserRecord) User {
+func (gw UserGateway) UserRecordToUser(record db.User) User {
 	return User{
 		Id:     record.Pk(),
-		Name:   record.GetName(),
+		Name:   record.Name,
 		Client: nil,
 	}
 }
 
-func (gw *UserGateway) UserToUserRecord(user User) db.UserRecord {
-	return db.UserRecord{
+func (gw UserGateway) UserToUserRecord(user User) db.User {
+	return db.User{
 		Id:   user.Id,
 		Name: user.Name,
 	}
 }
 
-func (gw *UserGateway) Add(user *User) error {
-	if err := gw.repo.Add(gw.UserToUserRecord(*user)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (gw *UserGateway) Exists(pk string) (bool, error) {
+func (gw UserGateway) Exists(pk string) bool {
 	return gw.repo.Exists(pk)
 }
 
-// Get returns a loaded User from the DB
-// CAREFUL! This User rooms are nil pointers (lazy loaded)
-func (gw *UserGateway) Get(pk string) (*User, error) {
-	userr, err := gw.repo.Get(pk)
-	if err != nil {
-		return nil, err
+func (gw UserGateway) Create(user *User) error {
+	userr := gw.UserToUserRecord(*user)
+	return gw.repo.Create(userr)
+}
+
+func (gw UserGateway) Read(pk string) *User {
+	userr := *gw.repo.Read(pk)
+	user := gw.UserRecordToUser(userr)
+	return &user
+
+}
+
+func (gw UserGateway) ReadAll() []*User {
+	userrs := gw.repo.ReadAll()
+	users := make([]*User, 0)
+	for _, u := range userrs {
+		user := gw.UserRecordToUser(*u)
+		users = append(users, &user)
 	}
-	return &User{
-		Id:     userr.Id,
-		Name:   userr.Name,
-		Client: nil,
-	}, nil
+	return users
 }
 
-func (gw *UserGateway) GetAll() ([]*User, error) {
-	return nil, nil
+func (gw UserGateway) Update(pk string, user *User) error {
+	return nil
 }
 
-func (gw *UserGateway) Remove(pk string) error {
-	return gw.repo.Remove(pk)
+func (gw UserGateway) Delete(pk string) {
+	gw.repo.Delete(pk)
 }

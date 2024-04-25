@@ -155,11 +155,38 @@ func (engine *ChatEngine) OpenRoom(id string, name string, driver string) error 
 	return nil
 }
 
+// RequestRoutePassengers request the passengers of a the given route
+// TODO refactor to a External Gateway object
 func (engine *ChatEngine) RequestRoutePassengers(id string) ([]*User, error) {
-	return nil, nil
+	// make request
+	url := engine.Configuration.RouteApiUrl.JoinPath("routes", id, "passengers")
+	request, err := http.NewRequest(
+		http.MethodGet,
+		url.String(),
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("error: could not create route passenger request")
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("Token %s", engine.Configuration.Credentials.Token()))
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("route api request falied with status code: %v", response.StatusCode)
+	}
+	users := make([]*User, 0)
+	body, _ := io.ReadAll(response.Body)
+	if err = json.Unmarshal(body, &users); err != nil {
+		log.Fatalf("error: falied to parse route api response body: %v", err)
+	}
+	return users, nil
 }
 
 // RequestUser loads the user by getting it from the DB and, if it does not exist, from the user API.
+// TODO refactor to a External Gateway object
 func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 	log.Printf("info: loading user %s", id)
 	usrUrl := engine.Configuration.UserApiUrl.JoinPath("drivers", id)
@@ -186,8 +213,47 @@ func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 	return user, nil
 }
 
+// RequestUserRoutes requests the routes from the given user to the RouteAPI
+// TODO refactor to a External Gateway object
 func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
-	return nil, nil
+	// make request
+	url := engine.Configuration.UserApiUrl.JoinPath("user", "routes", id)
+
+	// Assign the updated query parameters back to the URL
+	q := url.Query()
+	q.Add("driver", "true")
+	url.RawQuery = q.Encode()
+
+	request, err := http.NewRequest(
+		http.MethodGet,
+		url.String(),
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("error: could not create user routes request")
+	}
+	request.Header.Add("Authorization", fmt.Sprintf("Token %s", engine.Configuration.Credentials.Token()))
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("user api request falied with status code: %v", response.StatusCode)
+	}
+	routes := make([]*Route, 0)
+	body, _ := io.ReadAll(response.Body)
+	if err = json.Unmarshal(body, &routes); err != nil {
+		log.Fatalf("error: falied to parse user api response body: %v", err)
+	}
+	return routes, nil
+}
+
+// TODO error?
+func (engine *ChatEngine) StoreMessage(message Message) {
+	engine.GatewayManager.UserGateway().Create(&message.Sender)
+	engine.GatewayManager.RoomGateway().Create(&message.Room)
+	engine.GatewayManager.MessageGateway().Create(&message)
 }
 
 // NewChatEngine creates a new chat engine with the intended application defaults.
@@ -211,18 +277,15 @@ func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 	}
 	gwm := GatewayManager{
 		userGw: UserGateway{
-			repo: persist.UserRepository{DB: db},
+			repo: persist.UserRepository{Db: db},
 		},
 		roomGw: RoomGateway{
-			repo: persist.RoomRepository{DB: db},
+			repo: persist.RoomRepository{Db: db},
 		},
 		msgGw: MessageGateway{
-			repo: persist.MessageRepository{DB: db},
+			repo: persist.MessageRepository{Db: db},
 		},
 	}
-	gwm.userGw.manager = &gwm
-	gwm.roomGw.manager = &gwm
-	gwm.msgGw.manager = &gwm
 
 	engine := &ChatEngine{
 		Configuration:  configuration,

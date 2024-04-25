@@ -2,30 +2,41 @@ package persist
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
+	"log"
 
 	"gorm.io/gorm"
 )
 
+// The primary
 type MessageKey struct {
 	room   string
 	sender string
 }
 
 func (k MessageKey) Pk() (string, string) { return k.room, k.sender }
-func (k MessageKey) Room() string         { return k.room }
-func (k MessageKey) Sender() string       { return k.sender }
 
-type MessageRecord struct {
-	ID        uint `gorm:"primarykey"`
-	CreatedAt time.Time
-
-	Room    RoomRecord // Belongs To relation
-	Sender  UserRecord // Belongs To relation
-	Content string
+func MakeMessageKey(room string, sender string) MessageKey {
+	return MessageKey{
+		room,
+		sender,
+	}
 }
 
-func (r MessageRecord) Pk() MessageKey {
+type Message struct {
+	Id        uint
+	CreatedAt time.Time
+
+	RoomID   string `gorm:"type:varchar(255)"` // Foreign key for Room
+	Room     Room   `gorm:"foreignKey:RoomID"`
+	SenderID string `gorm:"type:varchar(255)"` // Foreign key for User
+	Sender   User   `gorm:"foreignKey:SenderID"`
+	Content  string
+}
+
+func (r Message) Pk() MessageKey {
 	return MessageKey{
 		room:   r.Room.Pk(),
 		sender: r.Sender.Pk(),
@@ -33,49 +44,54 @@ func (r MessageRecord) Pk() MessageKey {
 }
 
 type MessageRepository struct {
-	*gorm.DB
+	Db *gorm.DB
 }
 
-func (repo MessageRepository) Exists(id MessageKey) (bool, error) {
-	r := repo.First(&MessageRecord{}).Where("room_id = ? AND sender_id = ?", id.Room, id.Sender)
+func (repo MessageRepository) Exists(pk MessageKey) bool {
+	r := repo.Db.First(&Message{}).Where("room_id = ? AND sender_id = ?", pk.room, pk.sender)
 	if r.Error != nil {
 		if errors.Is(r.Error, gorm.ErrRecordNotFound) {
-			return false, nil
+			return false
 		}
-		return false, r.Error
+		log.Print(fmt.Errorf("message repo error: %w", r.Error))
+		return false
 	}
-	return true, nil
+	return true
 }
 
-func (repo MessageRepository) Add(msg MessageRecord) error {
-	return repo.Create(&msg).Error
+func (repo MessageRepository) Create(msg Message) error {
+	return repo.Db.Create(&msg).Error
 }
 
-func (repo MessageRepository) Remove(pk MessageKey) error {
-	r := repo.Delete(&MessageRecord{}).Where("room_id = ? AND sender_id = ?", pk.Room, pk.Sender)
-	return r.Error
+func (repo MessageRepository) Read(pk MessageKey) Message {
+	result := Message{}
+	repo.Db.First(result).Where("room_id = ? AND sender_id = ?", pk.room, pk.sender)
+	return result
 }
 
-func (repo MessageRepository) Get(pk MessageKey) (*MessageRecord, error) {
-	result := &MessageRecord{}
-	stm := repo.First(result).Where("room_id = ? AND sender_id = ?", pk.Room, pk.Sender)
-	return result, stm.Error
+func (repo MessageRepository) ReadAll() []Message {
+	var results []Message = make([]Message, 0)
+	repo.Db.Preload("Room").Preload("Sender").Find(results)
+	return results
 }
 
-func (repo MessageRepository) GetAll() ([]*MessageRecord, error) {
-	var results []*MessageRecord = make([]*MessageRecord, 0)
-	stm := repo.Preload("Room").Preload("Sender").Find(results)
-	return results, stm.Error
+func (repo MessageRepository) Update(pk MessageKey, msg Message) error {
+	return nil
 }
 
-func (repo MessageRepository) GetByRoom(room RoomRecord) ([]*MessageRecord, error) {
-	var results []*MessageRecord
-	err := repo.Model(&MessageRecord{Room: room}).Preload("Sender").Find(&results).Error
+func (repo MessageRepository) Delete(pk MessageKey) {
+	repo.Db.Delete(&Message{}).Where("room_id = ? AND sender_id = ?", pk.room, pk.sender)
+
+}
+
+func (repo MessageRepository) GetByRoom(room Room) ([]Message, error) {
+	var results []Message
+	err := repo.Db.Model(&Message{Room: room}).Preload("Sender").Find(&results).Error
 	return results, err
 }
 
-func (repo MessageRepository) GetBySender(sender UserRecord) ([]*MessageRecord, error) {
-	var results []*MessageRecord
-	err := repo.Model(&MessageRecord{Sender: sender}).Preload("Room").Find(&results).Error
+func (repo MessageRepository) GetBySender(sender User) ([]Message, error) {
+	var results []Message
+	err := repo.Db.Model(&Message{Sender: sender}).Preload("Room").Find(&results).Error
 	return results, err
 }

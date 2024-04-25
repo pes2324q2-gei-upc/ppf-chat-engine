@@ -33,7 +33,7 @@ type Client struct {
 	User       *User
 
 	// Buffered channel of outbound messages
-	send chan *Message
+	send chan *Action
 }
 
 // Close closes the client connection and unregisters the client from the engine.
@@ -132,7 +132,7 @@ func (client *Client) WritePump() {
 
 // HandleMessage handles a message depending on the command specified in the message.
 func (client *Client) HandleMessage(raw []byte) {
-	message := &Message{}
+	message := &Action{}
 	if err := json.Unmarshal(raw, message); err != nil {
 		if errors.Is(err, ErrNoMessageId) {
 			return
@@ -168,8 +168,8 @@ func (client *Client) HandleMessage(raw []byte) {
 }
 
 // Handle a Send Message command by sending the message to the specified room.
-func (client *Client) handleSendMessage(message *Message) {
-	if room, ok := client.Server.Engine.Rooms[message.Room]; ok {
+func (client *Client) handleSendMessage(message *Action) {
+	if room, ok := client.Engine().Rooms[message.Room]; ok {
 		room.broadcast <- message
 		// ack the message
 		ack := *message
@@ -182,9 +182,9 @@ func (client *Client) handleSendMessage(message *Message) {
 }
 
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
-func (client *Client) handleGetRooms(message *Message) {
-	rooms := client.Engine().GetUserRooms(message.Sender)
-	content, err := json.Marshal(rooms)
+func (client *Client) handleGetRooms(message *Action) {
+	rooms := client.User.GetRooms()
+	content, err := json.Marshal(rooms) // TODO fix
 	if err != nil {
 		log.Panicf("panic: %v", err)
 		return
@@ -195,7 +195,7 @@ func (client *Client) handleGetRooms(message *Message) {
 }
 
 // Handle a Get Room Messages command by sending the client the messages of the specified room.
-func (client *Client) handleGetRoomMessages(message *Message) {
+func (client *Client) handleGetRoomMessages(message *Action) {
 	// Send the message to the room
 	log.Printf("warning: not implemented yet")
 	rsp := *message
@@ -203,7 +203,7 @@ func (client *Client) handleGetRoomMessages(message *Message) {
 	client.send <- &rsp
 }
 
-func (client *Client) handleError(message *Message, err error) {
+func (client *Client) handleError(message *Action, err error) {
 	rsp := *message
 	rsp.Content = fmt.Sprintf(`{"status":"error","message":"%s"}`, err.Error())
 	client.send <- &rsp
@@ -219,6 +219,6 @@ func NewClient(connection *websocket.Conn, server *WsServer, user *User) *Client
 		connection,
 		server,
 		user,
-		make(chan *Message, 256),
+		make(chan *Action, 256),
 	}
 }

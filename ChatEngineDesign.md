@@ -129,6 +129,10 @@ _Response:_
             {
                 "id": "<room_id>",
                 "name": "<room_name>",
+                "driver": {
+                    "id": "<user_id>",
+                    "name": "<user_name>"
+                },
                 "users": [
                     {
                         "id": "<user_id>",

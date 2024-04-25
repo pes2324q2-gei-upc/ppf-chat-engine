@@ -6,49 +6,55 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRecord struct {
+type User struct {
 	Id   string `gorm:"primarykey"`
 	Name string
 }
 
-func (r UserRecord) Pk() string      { return r.Id }
-func (r UserRecord) GetName() string { return r.Name }
+func (r User) Pk() string { return r.Id }
 
 type UserRepository struct {
-	*gorm.DB
+	Db *gorm.DB
 }
 
-func (repo *UserRepository) Exists(id string) (bool, error) {
-	r := repo.First(&UserRecord{})
-	return r.RowsAffected >= 1, r.Error
+func (repo *UserRepository) Exists(id string) bool {
+	r := repo.Db.First(&User{})
+	if r.Error != nil {
+		return false
+	}
+	return r.RowsAffected >= 1
 }
 
-func (repo UserRepository) Add(user UserRecord) error {
-	return repo.Create(&user).Error
+func (repo UserRepository) Create(user User) error {
+	return repo.Db.Create(&user).Error
 }
 
-func (repo UserRepository) Remove(id string) error {
-	return repo.Delete(&UserRecord{}, id).Error
+func (repo UserRepository) Read(id string) *User {
+	var result *User = &User{Id: id}
+	repo.Db.First(result).Preload("Rooms")
+	return result
 }
 
-func (repo UserRepository) Get(id string) (*UserRecord, error) {
-	var result *UserRecord = &UserRecord{Id: id}
-	stm := repo.First(result).Preload("Rooms")
-	return result, stm.Error
+func (repo UserRepository) ReadAll() []*User {
+	var users []*User = make([]*User, 0)
+	repo.Db.Find(users)
+	return users
 }
 
-func (repo UserRepository) GetAll() ([]*UserRecord, error) {
-	var users []*UserRecord = make([]*UserRecord, 0)
-	stm := repo.Find(users)
-	return users, stm.Error
+func (repo UserRepository) Update(id string, user *User) error {
+	return nil
 }
 
-func (repo UserRepository) AddRoom(user UserRecord, room RoomRecord) error {
-	stm := repo.Model(&user).Association("Rooms").Append(&room)
+func (repo UserRepository) Delete(id string) {
+	repo.Db.Delete(&User{}, id)
+}
+
+func (repo UserRepository) AddRoom(user User, room Room) error {
+	stm := repo.Db.Model(&user).Association("Rooms").Append(&room)
 	return errors.New(stm.Error())
 }
 
-func (repo UserRepository) RemoveRoom(user UserRecord, room RoomRecord) error {
-	stm := repo.Model(&user).Association("Rooms").Delete(&room)
+func (repo UserRepository) RemoveRoom(user User, room Room) error {
+	stm := repo.Db.Model(&user).Association("Rooms").Delete(&room)
 	return errors.New(stm.Error())
 }

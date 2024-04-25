@@ -1,6 +1,10 @@
 package chat
 
-import db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
+import (
+	"encoding/json"
+
+	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
+)
 
 type Room struct {
 	Id     string           `json:"id"`
@@ -11,8 +15,29 @@ type Room struct {
 	register   chan *User // Channel for registering/joining a user
 	unregister chan *User // Channel for unregistering/leaving a user
 
-	broadcast chan *Message // Channel for broadcasting messages to all users in the room
-	close     chan bool     // Channel for closing the room
+	broadcast chan *Action // Channel for broadcasting messages to all users in the room
+	close     chan bool    // Channel for closing the room
+}
+
+func (room *Room) MarshalJSON() ([]byte, error) {
+	type Alias Room
+	alias := struct {
+		Id     string `json:"id"`
+		Name   string `json:"name"`
+		Driver string `json:"driver"`
+		Users  []User `json:"users"`
+		*Alias
+	}{
+		Alias:  (*Alias)(room),
+		Id:     room.Id,
+		Name:   room.Name,
+		Driver: *room.Driver,
+		Users:  make([]User, len(room.Users)),
+	}
+	for _, user := range room.Users {
+		alias.Users = append(alias.Users, *user)
+	}
+	return json.Marshal(&alias)
 }
 
 func (room *Room) Run() {
@@ -38,7 +63,7 @@ func (room *Room) Unregister(user *User) {
 	delete(room.Users, user.Id)
 }
 
-func (room *Room) Broadcast(message *Message) {
+func (room *Room) Broadcast(message *Action) {
 	for _, user := range room.Users {
 		if user.Client != nil && message.Sender != user.Id {
 			user.Client.send <- message
@@ -62,34 +87,67 @@ func NewRoom(id string, name string, driver *string) *Room {
 		Users:      make(map[string]*User, 4),
 		register:   make(chan *User, 2),
 		unregister: make(chan *User, 2),
-		broadcast:  make(chan *Message, 10),
+		broadcast:  make(chan *Action, 10),
 		close:      make(chan bool),
 	}
 }
 
 type RoomGateway struct {
-	manager *GatewayManager
-	repo    db.RoomRepository
+	repo db.RoomRepository
 }
 
-func (gw *RoomGateway) Add(user *User) error {
-	return nil
+func (gw RoomGateway) RoomRecordToRoom(record db.Room) Room {
+	return Room{
+		Id:         record.Pk(),
+		Name:       record.Name,
+		Driver:     &record.Driver,
+		Users:      make(map[string]*User),
+		register:   make(chan *User),
+		unregister: make(chan *User),
+		broadcast:  make(chan *Action),
+		close:      make(chan bool),
+	}
 }
 
-func (gw *RoomGateway) Exists(pk string) (bool, error) {
+func (gw RoomGateway) RoomToRoomRecord(user Room) db.Room {
+	return db.Room{
+		Id:     user.Id,
+		Name:   user.Name,
+		Driver: *user.Driver,
+		Users:  make([]*db.User, 0),
+	}
+}
+
+func (gw RoomGateway) Exists(pk string) bool {
 	return gw.repo.Exists(pk)
 }
 
-// Get returns a loaded User from the DB
-// CAREFUL! This User rooms are nil pointers (lazy loaded)
-func (gw *RoomGateway) Get(pk string) (*User, error) {
-	userr, err := gw.repo.Get(pk)
-	if err != nil {
-		return nil, err
+func (gw RoomGateway) Create(room *Room) error {
+	roomr := gw.RoomToRoomRecord(*room)
+	return gw.repo.Create(roomr)
+}
+
+func (gw RoomGateway) Read(pk string) *Room {
+	roomr := *gw.repo.Read(pk)
+	room := gw.RoomRecordToRoom(roomr)
+	return &room
+
+}
+
+func (gw RoomGateway) ReadAll() []*Room {
+	roomrs := gw.repo.ReadAll()
+	rooms := make([]*Room, 0)
+	for _, u := range roomrs {
+		room := gw.RoomRecordToRoom(*u)
+		rooms = append(rooms, &room)
 	}
-	return &User{
-		Id:     userr.Id,
-		Name:   userr.Name,
-		Client: nil,
-	}, nil
+	return rooms
+}
+
+func (gw RoomGateway) Update(pk string, user *Room) error {
+	return nil
+}
+
+func (gw RoomGateway) Delete(pk string) {
+	gw.repo.Delete(pk)
 }

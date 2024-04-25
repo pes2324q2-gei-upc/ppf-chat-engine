@@ -12,6 +12,7 @@ type WsServer struct {
 	Clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	store      chan *Action
 }
 
 func (server *WsServer) Run() {
@@ -25,6 +26,18 @@ func (server *WsServer) Run() {
 				delete(server.Clients, client)
 				close(client.send)
 			}
+		case msgAction := <-server.store:
+			if msgAction.Command != SendMessageCmd {
+				break
+			}
+			r := server.Engine.Rooms[msgAction.Room]
+			u := server.Engine.Users[msgAction.Sender]
+			msg := Message{
+				Content: msgAction.Content,
+				Room:    *r,
+				Sender:  *u,
+			}
+			server.Engine.StoreMessage(msg)
 		}
 	}
 }
