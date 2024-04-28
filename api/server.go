@@ -77,6 +77,7 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	if !ctrl.Engine.Exists(id) {
 		if err := ctrl.Engine.InitUser(id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {

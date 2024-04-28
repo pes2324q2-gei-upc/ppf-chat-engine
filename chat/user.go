@@ -2,7 +2,6 @@ package chat
 
 import (
 	"encoding/json"
-	"fmt"
 
 	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
@@ -28,7 +27,7 @@ func (u *User) GetRooms() []*Room {
 func (u *User) UnmarshalJSON(data []byte) error {
 	type Alias User
 	aux := &struct {
-		Id   int    `json:"id"`
+		Id   string `json:"id"`
 		Name string `json:"username"`
 		*Alias
 	}{
@@ -37,7 +36,6 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	u.Id = fmt.Sprintf("%d", aux.Id)
 	u.Name = aux.Name
 	return nil
 }

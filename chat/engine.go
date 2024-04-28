@@ -220,11 +220,12 @@ func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 // TODO refactor to a External Gateway object
 func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 	// make request
-	url := engine.Configuration.UserApiUrl.JoinPath("user", "routes", id)
+	url := engine.Configuration.RouteApiUrl.JoinPath("v2", "routes")
 
 	// Assign the updated query parameters back to the URL
 	q := url.Query()
-	q.Add("driver", "true")
+	q.Add("driver", id)
+	// q.Add("passengers__id__in", id)
 	url.RawQuery = q.Encode()
 
 	request, err := http.NewRequest(

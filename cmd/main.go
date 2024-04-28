@@ -24,7 +24,7 @@ func main() {
 }
 
 func Run() error {
-	addr := flag.String("addr", "localhost:8080", "http service address")
+	addr := flag.String("addr", "localhost:8083", "http service address")
 	dbPath := flag.String("db", "chat.db", "database path")
 	flag.Parse()
 
