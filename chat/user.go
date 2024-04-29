@@ -49,8 +49,7 @@ func NewUser(id string, name string, client *Client) *User {
 }
 
 type UserGateway struct {
-	manager *GatewayManager
-	repo    db.UserRepository
+	repo db.UserRepository
 }
 
 func (gw UserGateway) UserRecordToUser(record db.User) User {

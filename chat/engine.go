@@ -224,8 +224,7 @@ func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 
 	// Assign the updated query parameters back to the URL
 	q := url.Query()
-	q.Add("driver", id)
-	// q.Add("passengers__id__in", id)
+	q.Add("user", id)
 	url.RawQuery = q.Encode()
 
 	request, err := http.NewRequest(
