@@ -13,6 +13,7 @@ import (
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 )
 
+
 // ChatApiController is a controller for handling API requests to perform operations on the chat engine.
 type ChatApiController struct {
 	Router *mux.Router

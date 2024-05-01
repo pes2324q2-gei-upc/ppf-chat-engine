@@ -33,7 +33,7 @@ func (server *WsServer) Run() {
 			r := server.Engine.Rooms[msgAction.Room]
 			u := server.Engine.Users[msgAction.Sender]
 			msg := Message{
-				Content: msgAction.Content,
+				Content: msgAction.Content.(string),
 				Room:    *r,
 				Sender:  *u,
 			}
@@ -44,6 +44,9 @@ func (server *WsServer) Run() {
 
 func (server *WsServer) OpenConnection(w http.ResponseWriter, r *http.Request) *Client {
 	var upgrader = websocket.Upgrader{}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true // HACK this should not be so... unsafe
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)

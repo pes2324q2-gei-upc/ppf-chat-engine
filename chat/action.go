@@ -24,7 +24,7 @@ var (
 type Action struct {
 	MessageId string `json:"messageId"`
 	Command   string `json:"command"`
-	Content   string `json:"content"`
+	Content   any    `json:"content"`
 	Room      string `json:"room"`
 	Sender    string `json:"sender"`
 }
@@ -42,8 +42,8 @@ func (msg *Action) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if msg.MessageId == "" || msg.Command == "" {
-		return ErrMessageMalformed
+	if msg.MessageId == "" {
+		return ErrNoMessageId
 	}
 	// Check if non-optional fields are empty based on the command
 	switch msg.Command {

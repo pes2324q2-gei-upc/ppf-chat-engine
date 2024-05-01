@@ -57,6 +57,7 @@ func (room *Room) Run() {
 
 func (room *Room) Register(user *User) {
 	room.Users[user.Id] = user
+	user.Rooms[room.Id] = true
 }
 
 func (room *Room) Unregister(user *User) {

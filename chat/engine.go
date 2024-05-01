@@ -26,6 +26,7 @@ type ChatEngine struct {
 
 func (engine *ChatEngine) AddUser(user *User) {
 	engine.Users[user.Id] = user
+	user.Engine = engine
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.
@@ -84,19 +85,10 @@ func (engine *ChatEngine) InitUser(id string) error {
 	// for each route open a room
 	for _, route := range routes {
 		// but request driver user first and join it
-		driver, err := engine.RequestUser(route.Driver.Id)
-		if err != nil {
-			return err
-		}
-		engine.AddUser(driver)
-		engine.OpenRoom(route.Id, route.Name, driver.Id)
-		engine.JoinRoom(driver.Id, route.Id)
-		// then request all passengers from a route
-		users, err := engine.RequestRoutePassengers(route.Id)
-		if err != nil {
-			return err
-		}
-		for _, user := range users {
+		engine.AddUser(route.Driver)
+		engine.OpenRoom(route.Id, route.Name, route.Driver.Id)
+		engine.JoinRoom(route.Driver.Id, route.Id)
+		for _, user := range route.Passengers {
 			// and join them to the room
 			engine.AddUser(user)
 			engine.JoinRoom(route.Id, user.Id)
@@ -206,7 +198,7 @@ func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 		return nil, ErrUserApiRequestFailed
 	}
 	defer response.Body.Close()
-
+	// "{\"id\":1,\"username\":\"Mordecai\",\"first_name\":\"Mordecai\",\"last_name\":\"\",\"email\":\"mordecai@thepark.com\",\"points\":0,\"birthDate\":\"1990-07-16\",\"profileImage\":\"https://bucket-ppf.s3.amazonaws.com/profile_image/default.png\",\"driverPoints\":0,\"autonomy\":0,\"chargerTypes\":[1,2],\"preference\":{\"id\":1,\"canNotTravelWithPets\":true,\"listenToMusic\":false,\"noSmoking\":true,\"talkTooMuch\":false},\"iban\":\"ES9121000418450200051332\"}"
 	body, _ := io.ReadAll(response.Body)
 	user := NewUser("", "", nil)
 	if err = json.Unmarshal(body, user); err != nil {
@@ -242,14 +234,26 @@ func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("user api request falied with status code: %v", response.StatusCode)
+		err := fmt.Errorf("user api request falied with status code: %v", response.StatusCode)
+		log.Printf("%v", err)
+		return nil, err
 	}
-	routes := make([]*Route, 0)
+	// TODO handle multiple pages
+	paginatedResponse := &struct {
+		Count    int      `json:"count"`
+		Next     *string  `json:"next"`
+		Previous *string  `json:"previous"`
+		Results  []*Route `json:"results"`
+	}{
+		Results: make([]*Route, 0),
+	}
 	body, _ := io.ReadAll(response.Body)
-	if err = json.Unmarshal(body, &routes); err != nil {
-		log.Fatalf("error: falied to parse user api response body: %v", err)
+	if err = json.Unmarshal(body, &paginatedResponse); err != nil {
+		err := fmt.Errorf("falied to parse route list: %v", err)
+		log.Printf("%v", err)
+		return nil, err
 	}
-	return routes, nil
+	return paginatedResponse.Results, nil
 }
 
 // TODO error?

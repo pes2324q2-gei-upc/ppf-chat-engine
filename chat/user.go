@@ -2,6 +2,7 @@ package chat
 
 import (
 	"encoding/json"
+	"fmt"
 
 	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
@@ -17,7 +18,7 @@ type User struct {
 }
 
 func (u *User) GetRooms() []*Room {
-	rooms := make([]*Room, len(u.Rooms))
+	rooms := make([]*Room, 0, len(u.Rooms))
 	for id := range u.Rooms {
 		rooms = append(rooms, u.Engine.Rooms[id])
 	}
@@ -27,7 +28,7 @@ func (u *User) GetRooms() []*Room {
 func (u *User) UnmarshalJSON(data []byte) error {
 	type Alias User
 	aux := &struct {
-		Id   string `json:"id"`
+		Id   int    `json:"id"`
 		Name string `json:"username"`
 		*Alias
 	}{
@@ -36,7 +37,13 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
+	u.Id = fmt.Sprintf("%d", aux.Id)
 	u.Name = aux.Name
+
+	if u.Rooms == nil {
+		u.Rooms = make(map[string]bool)
+	}
+
 	return nil
 }
 
@@ -45,6 +52,7 @@ func NewUser(id string, name string, client *Client) *User {
 		Id:     id,
 		Name:   name,
 		Client: client,
+		Rooms:  make(map[string]bool),
 	}
 }
 

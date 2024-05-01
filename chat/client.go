@@ -2,7 +2,6 @@ package chat
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -134,15 +133,7 @@ func (client *Client) WritePump() {
 func (client *Client) HandleMessage(raw []byte) {
 	message := &Action{}
 	if err := json.Unmarshal(raw, message); err != nil {
-		if errors.Is(err, ErrNoMessageId) {
-			return
-		}
-		if errors.Is(err, ErrMessageMalformed) {
-			client.handleError(message, err)
-		}
-		if errors.Is(err, ErrUnknownCommand) {
-			client.handleError(message, err)
-		}
+		client.handleError(message, err)
 		log.Printf("error: %v", err)
 		return
 	}
@@ -184,13 +175,13 @@ func (client *Client) handleSendMessage(message *Action) {
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
 func (client *Client) handleGetRooms(message *Action) {
 	rooms := client.User.GetRooms()
-	content, err := json.Marshal(rooms) // TODO fix
-	if err != nil {
-		log.Panicf("panic: %v", err)
-		return
-	}
+	// content, err := json.Marshal(rooms) // TODO fix
+	// if err != nil {
+	// 	log.Panicf("panic: %v", err)
+	// 	return
+	// }
 	rsp := *message
-	rsp.Content = string(content)
+	rsp.Content = rooms
 	client.send <- &rsp
 }
 
