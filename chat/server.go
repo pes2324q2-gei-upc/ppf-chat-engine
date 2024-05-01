@@ -22,10 +22,7 @@ func (server *WsServer) Run() {
 			log.Printf("info: registering client %s", client.User.Id)
 			server.Clients[client] = true
 		case client := <-server.unregister:
-			if _, ok := server.Clients[client]; ok {
-				delete(server.Clients, client)
-				close(client.send)
-			}
+			delete(server.Clients, client)
 		case msgAction := <-server.store:
 			if msgAction.Command != SendMessageCmd {
 				break
