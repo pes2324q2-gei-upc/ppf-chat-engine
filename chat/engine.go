@@ -259,11 +259,20 @@ func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 	return paginatedResponse.Results, nil
 }
 
-// TODO error?
 func (engine *ChatEngine) StoreMessage(message Message) {
-	engine.GatewayManager.UserGateway().Create(&message.Sender)
-	engine.GatewayManager.RoomGateway().Create(&message.Room)
-	engine.GatewayManager.MessageGateway().Create(&message)
+	userGw := engine.GatewayManager.UserGateway()
+	roomGw := engine.GatewayManager.RoomGateway()
+	messageGw := engine.GatewayManager.MessageGateway()
+
+	if !userGw.Exists(message.Sender.Id) {
+		err := userGw.Create(&message.Sender)
+		log.Printf("%v", err)
+	}
+	if !roomGw.Exists(message.Room.Id) {
+		err := roomGw.Create(&message.Room)
+		log.Printf("%v", err)
+	}
+	messageGw.Create(&message)
 }
 
 // NewChatEngine creates a new chat engine with the intended application defaults.
