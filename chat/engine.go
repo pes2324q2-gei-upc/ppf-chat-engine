@@ -25,8 +25,11 @@ type ChatEngine struct {
 }
 
 func (engine *ChatEngine) AddUser(user *User) {
+	if user, ok := engine.Users[user.Id]; ok {
+		user.Engine = engine
+		return
+	}
 	engine.Users[user.Id] = user
-	user.Engine = engine
 }
 
 // CloseRoom closes the specified room and removes it from the chat engine.

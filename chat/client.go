@@ -11,7 +11,7 @@ import (
 
 const (
 	// Max time allowed to read the next pong msg from the peer
-	pongWait   = 30 * time.Second
+	pongWait   = 120 * time.Second
 	pingPeriod = 10 * time.Second
 
 	// Max time allowed to write a message to the peer
@@ -175,11 +175,6 @@ func (client *Client) handleSendMessage(message *Action) {
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
 func (client *Client) handleGetRooms(message *Action) {
 	rooms := client.User.GetRooms()
-	// content, err := json.Marshal(rooms) // TODO fix
-	// if err != nil {
-	// 	log.Panicf("panic: %v", err)
-	// 	return
-	// }
 	rsp := *message
 	rsp.Content = rooms
 	client.send <- &rsp

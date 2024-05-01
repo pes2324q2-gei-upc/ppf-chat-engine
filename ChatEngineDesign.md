@@ -25,65 +25,7 @@
 - `Chat Engine : CE`
 
 ## Sequence Diagrams
-### **Chat Engine start**
-1. CE starts  
-2. Opens Database connection  
-3. [Requests all routes from the RouteAPI (DD1)](#dd1)  
-    - for each route, CE requests it's users from the UserAPI and stores the users in the database
-    - CE creates a chat room for each route and joins the users to the chat room, stores the chat room in the database
-5. Opens a WebSocket server
-6. Opens a HTTP server and listens for incoming requests
-
-### **Driver creates route**
-1. Driver creates a route, App requests RouteAPI to create a route.
-2. RouteAPI creates a route and returns the route ID.
-3. RouteAPI requests ChatEngine to create a chat room for the route with the route ID and the driver's user ID.
-   - If the ACK fails the RouteAPI should retry the request.
-6. ChatEngine creates a chat room for the route
-7. ChatEngine joins the driver to the chat room
-    - If ChatEngine does not have the user info it requests it to the UserAPI
-8. ChatEngine sends a msg through WS to notify the driver joined a chat room.
-
-### **User joins route**
-1. User joins a route, requests RouteAPI to join the route.
-2. RouteAPI joins the user to the route and returns the route ID.
-3. RouteAPI requests ChatEngine to join the user to the chat room for the route with the route ID and the user's user ID.
-   - If the ACK fails the RouteAPI should retry the request.
-5. ChatEngine joins the user to the chat room.
-6. ChatEngine sends a msg through WS to notify the user joined a chat room.
-7. App adds the room to the cached data.
-
-### **User leaves route**
-1. User leaves a route, requests RouteAPI to leave the route.
-2. RouteAPI leaves the user from the route.
-3. RouteAPI requests ChatEngine to leave the user from the chat room for the route with the route ID and the user's user ID.
-   - If the ACK fails the RouteAPI should retry the request.
-5. ChatEngine leaves the user from the chat room.
-6. ChatEngine sends a msg through WS to notify the user left the chat room.
-7. App removes the room from the cached data.
-
-### **User connects**
-- The DB is empty
-1. User connects to the ws connection
-2. User not found in the DB and the user is requested to the UserAPI
-3. The rooms the user belongs to are not found in the DB and are requested to the RouteAPI
-4. Rooms are added to the user and the user is added to the rooms
-5. The user is added to the DB
-6. The room is added to the DB
-
-### **User disconnects**
-1. User disconnects from the ws connection
-2. CE removes the client from the user
-3. Removes the user from the client
-4. Closes the WebSocket connection
-5. Removes the client from the running WebSocket server
-
-### **User sends message**
-#### **User requests joined rooms**
-
-#### **User requests room messages**
-
-#### **User sends text message**
+### TBD
 
 ## Messages
 ### Message schema
@@ -91,14 +33,14 @@
 
 ```json
 {
-    "messageId": "string", // DD2
+    "messageId": "string",
     "command": "string",
     "content": "string",
     "room": "string",
     "sender": "string"
 }
 ```
-- `messageId`: unique identifier for the message, the client is responsible for generating this. If it's not unique it may cause undefined behavior. **IF OMITTED THE MESSAGE WILL BE IGNORED**
+- `messageId`: unique identifier for the message, the client is responsible for generating this. If it's not unique it may cause undefined behavior.
 - `command`: the command to execute.
 - `content`: the content of the message.
 - `room`: the room the message is related to.
@@ -215,6 +157,7 @@ An error will have the following structure:
 | error                    | description                                               |
 | ------------------------ | --------------------------------------------------------- |
 | `"message is malformed"` | The message does not follow the expected schema           |
+| `"no message id"`        | The message does not follow the expected schema           |
 | `"command not found"`    | The provided command does not exist                       |
 | `"wrong message sender"` | The provided sender does not match the expected user id   |
 | `"room not found"`       | The user does not belong to any room with the provided id |

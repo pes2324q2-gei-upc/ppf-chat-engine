@@ -71,3 +71,11 @@ func (msg *Action) UnmarshalJSON(data []byte) error {
 func (msg *Action) Json() ([]byte, error) {
 	return json.Marshal(msg)
 }
+
+// {
+// 	"messageId":"123",
+// 	"command":"",
+// 	"content":"",
+// 	"room":"",
+// 	"sender":"1"
+// }
