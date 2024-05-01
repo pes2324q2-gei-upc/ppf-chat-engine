@@ -13,7 +13,6 @@ import (
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 )
 
-
 // ChatApiController is a controller for handling API requests to perform operations on the chat engine.
 type ChatApiController struct {
 	Router *mux.Router
@@ -77,17 +76,21 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
 		if err := ctrl.Engine.InitUser(id); err != nil {
+			log.Printf("%v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		if errors.Is(err, chat.ErrUserNotFound) {
+			log.Printf("%v", err)
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		log.Printf("%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	log.Printf("User %s connected", id)
 }
 
 // CreateRoomHandler handles the request to open a new room.
