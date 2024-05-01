@@ -24,4 +24,4 @@ FROM alpine:3.19
 
 COPY --from=builder /app/chatengine /bin/chatengine
 
-ENTRYPOINT [ "chatengine", "-db", "/opt/chatengine/chat.db" ]
+ENTRYPOINT [ "chatengine", "-db", "/opt/chatengine/chat.db", "-addr", ":8000"]
