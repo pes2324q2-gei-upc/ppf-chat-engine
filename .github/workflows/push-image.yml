@@ -1,0 +1,32 @@
+name: Docker Image CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build with docker comPSOE
+      run: docker compose build # produces images
+
+    - name: Save image into a tarred archive
+    # docker image save for each image
+
+    - name: SCP file to remote
+      run: |
+        scp -o -i ${{ scerets.SSH_PRIVATE_KEY }} image.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/path/to/image
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+
+    - name: Docker compose in remote
+    # https://stackoverflow.com/questions/35433147/how-to-run-docker-compose-on-remote-host
+    
