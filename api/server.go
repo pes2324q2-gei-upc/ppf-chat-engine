@@ -178,5 +178,8 @@ func NewChatController(router *mux.Router, engine *chat.ChatEngine) *ChatApiCont
 	ctrl.Router.HandleFunc("/room", ctrl.CreateRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/join", ctrl.JoinRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoomHandler).Methods(http.MethodPost)
+
+	// TODO	ctrl.Router.HandleFunc("/room/<id>/messages").Methods(http.MethodGet)
+	// TODO ctrl.Router.HandleFunc("/room").Methods(http.MethodGet)
 	return ctrl
 }
