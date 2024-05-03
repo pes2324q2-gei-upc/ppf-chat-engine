@@ -2,16 +2,22 @@ name: Docker Image CI
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2.7.0
+      with:
+        key: ${{ secrets.SSH_AWS_KEY }}
+        known_hosts: ${{ secrets.KNOWN_HOSTS }}
+        # name: id_rsa # optional
+        # config: ${{ secrets.CONFIG }} # ssh_config; optional
+        # if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
+            
+    
     - uses: actions/checkout@v4
     - name: Build with docker comPSOE
       run: docker compose -f "docker-compose.build.yml" build # produces images
