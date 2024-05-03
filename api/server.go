@@ -75,18 +75,22 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	}
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
-		if err := ctrl.Engine.LoadUser(id); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+		if err := ctrl.Engine.InitUser(id); err != nil {
+			log.Printf("%v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 	if err := ctrl.Engine.ConnectUser(id, w, r); err != nil {
 		if errors.Is(err, chat.ErrUserNotFound) {
+			log.Printf("%v", err)
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		log.Printf("%v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	log.Printf("User %s connected", id)
 }
 
 // CreateRoomHandler handles the request to open a new room.
@@ -110,7 +114,7 @@ func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.
 	ctrl.Engine.OpenRoom(room.Id, room.Name, room.Driver)
 	// Join user to room
 	if !ctrl.Engine.Exists(room.Driver) {
-		ctrl.Engine.LoadUser(room.Driver)
+		ctrl.Engine.InitUser(room.Driver)
 	}
 	ctrl.Engine.JoinRoom(room.Id, room.Driver)
 	w.WriteHeader(http.StatusCreated)
@@ -134,7 +138,7 @@ func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Join user to room
 	if !ctrl.Engine.Exists(room.Driver) {
-		ctrl.Engine.LoadUser(room.Driver)
+		ctrl.Engine.InitUser(room.Driver)
 	}
 	ctrl.Engine.JoinRoom(room.Id, room.Driver)
 	w.WriteHeader(http.StatusOK)
@@ -174,5 +178,8 @@ func NewChatController(router *mux.Router, engine *chat.ChatEngine) *ChatApiCont
 	ctrl.Router.HandleFunc("/room", ctrl.CreateRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/join", ctrl.JoinRoomHandler).Methods(http.MethodPost)
 	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoomHandler).Methods(http.MethodPost)
+
+	// TODO	ctrl.Router.HandleFunc("/room/<id>/messages").Methods(http.MethodGet)
+	// TODO ctrl.Router.HandleFunc("/room").Methods(http.MethodGet)
 	return ctrl
 }

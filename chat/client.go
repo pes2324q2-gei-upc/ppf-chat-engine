@@ -2,7 +2,6 @@ package chat
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -12,7 +11,7 @@ import (
 
 const (
 	// Max time allowed to read the next pong msg from the peer
-	pongWait   = 30 * time.Second
+	pongWait   = 120 * time.Second
 	pingPeriod = 10 * time.Second
 
 	// Max time allowed to write a message to the peer
@@ -33,13 +32,13 @@ type Client struct {
 	User       *User
 
 	// Buffered channel of outbound messages
-	send chan *Message
+	send chan *Action
 }
 
 // Close closes the client connection and unregisters the client from the engine.
 func (client *Client) Close() {
 	log.Printf("info: closing connection for user %s", client.User.Id)
-	client.send = nil
+	close(client.send)
 	client.User = nil
 	client.Connection.Close()
 	client.Server.unregister <- client
@@ -88,7 +87,7 @@ func (client *Client) WritePump() {
 	// Loop to write messages to the WebSocket connection
 	for {
 		select {
-		case msg, ok := <-client.send:
+		case message, ok := <-client.send:
 			// Set a deadline for the next write operation to the WebSocket connection.
 			client.Connection.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
@@ -101,7 +100,7 @@ func (client *Client) WritePump() {
 			if err != nil {
 				return
 			}
-			if jsonMsg, err := msg.Json(); err != nil {
+			if jsonMsg, err := message.Json(); err != nil {
 				writer.Close()
 				log.Panicln("panic: %w", err) // Panic if the message can't be marshalled to JSON
 			} else {
@@ -109,13 +108,13 @@ func (client *Client) WritePump() {
 			}
 			// Handle queued messages
 			for range len(client.send) {
-				msg = <-client.send
-				if msgJson, err := msg.Json(); err != nil {
+				message = <-client.send
+				if messageJson, err := message.Json(); err != nil {
 					writer.Close()
 					log.Panicln("panic: %w", err)
 				} else {
 					writer.Write(newLine)
-					writer.Write(msgJson)
+					writer.Write(messageJson)
 				}
 			}
 			if err := writer.Close(); err != nil {
@@ -132,17 +131,9 @@ func (client *Client) WritePump() {
 
 // HandleMessage handles a message depending on the command specified in the message.
 func (client *Client) HandleMessage(raw []byte) {
-	message := &Message{}
+	message := &Action{}
 	if err := json.Unmarshal(raw, message); err != nil {
-		if errors.Is(err, ErrNoMessageId) {
-			return
-		}
-		if errors.Is(err, ErrMessageMalformed) {
-			client.handleError(message, err)
-		}
-		if errors.Is(err, ErrUnknownCommand) {
-			client.handleError(message, err)
-		}
+		client.handleError(message, err)
 		log.Printf("error: %v", err)
 		return
 	}
@@ -168,13 +159,14 @@ func (client *Client) HandleMessage(raw []byte) {
 }
 
 // Handle a Send Message command by sending the message to the specified room.
-func (client *Client) handleSendMessage(message *Message) {
-	if room, ok := client.User.Rooms[message.Room]; ok {
+func (client *Client) handleSendMessage(message *Action) {
+	if room, ok := client.Engine().Rooms[message.Room]; ok {
 		room.broadcast <- message
 		// ack the message
 		ack := *message
 		ack.Content = SendMessageAckContent
 		client.send <- &ack
+		client.Server.store <- message
 	} else {
 		client.handleError(message, ErrRoomNotFound)
 		log.Printf("error: room %s not found", message.Room)
@@ -182,30 +174,30 @@ func (client *Client) handleSendMessage(message *Message) {
 }
 
 // Handle a Get Rooms command by sending the client the rooms the user has joined to.
-func (client *Client) handleGetRooms(message *Message) {
-	content, err := json.Marshal(client.User.Rooms)
-	if err != nil {
-		log.Panicf("panic: %v", err)
-		return
-	}
-	rsp := *message
-	rsp.Content = string(content)
-	client.send <- &rsp
+func (client *Client) handleGetRooms(message *Action) {
+	rooms := client.User.GetRooms()
+	response := *message
+	response.Content = rooms
+	client.send <- &response
 }
 
 // Handle a Get Room Messages command by sending the client the messages of the specified room.
-func (client *Client) handleGetRoomMessages(message *Message) {
+func (client *Client) handleGetRoomMessages(message *Action) {
 	// Send the message to the room
 	log.Printf("warning: not implemented yet")
-	rsp := *message
-	rsp.Content = NotImplementedContent
-	client.send <- &rsp
+	response := *message
+	response.Content = NotImplementedContent
+	client.send <- &response
 }
 
-func (client *Client) handleError(message *Message, err error) {
-	rsp := *message
-	rsp.Content = fmt.Sprintf(`{"status":"error","message":"%s"}`, err.Error())
-	client.send <- &rsp
+func (client *Client) handleError(message *Action, err error) {
+	response := *message
+	response.Content = fmt.Sprintf(`{"status":"error","message":"%s"}`, err.Error())
+	client.send <- &response
+}
+
+func (client *Client) Engine() *ChatEngine {
+	return client.Server.Engine
 }
 
 // NewClient creates a new Client instance.
@@ -214,6 +206,6 @@ func NewClient(connection *websocket.Conn, server *WsServer, user *User) *Client
 		connection,
 		server,
 		user,
-		make(chan *Message, 256),
+		make(chan *Action, 256),
 	}
 }

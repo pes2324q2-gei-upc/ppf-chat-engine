@@ -12,6 +12,7 @@ type WsServer struct {
 	Clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
+	store      chan *Action
 }
 
 func (server *WsServer) Run() {
@@ -21,16 +22,28 @@ func (server *WsServer) Run() {
 			log.Printf("info: registering client %s", client.User.Id)
 			server.Clients[client] = true
 		case client := <-server.unregister:
-			if _, ok := server.Clients[client]; ok {
-				delete(server.Clients, client)
-				close(client.send)
+			delete(server.Clients, client)
+		case msgAction := <-server.store:
+			if msgAction.Command != SendMessageCmd {
+				break
 			}
+			r := server.Engine.Rooms[msgAction.Room]
+			u := server.Engine.Users[msgAction.Sender]
+			msg := Message{
+				Content: msgAction.Content.(string),
+				Room:    *r,
+				Sender:  *u,
+			}
+			server.Engine.StoreMessage(msg)
 		}
 	}
 }
 
 func (server *WsServer) OpenConnection(w http.ResponseWriter, r *http.Request) *Client {
 	var upgrader = websocket.Upgrader{}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true // HACK this should not be so... unsafe
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)

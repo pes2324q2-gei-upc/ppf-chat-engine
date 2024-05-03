@@ -1,67 +1,78 @@
 package chat
 
 import (
-	"encoding/json"
+	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
 
-const (
-	SendMessageCmd     = "SendMessage"
-	GetRoomsCmd        = "GetRooms"
-	GetRoomMessagesCmd = "GetRoomMessages"
-
-	SendMessageAckContent = `{"status":"ok", "message":"sent"}`
-	RoomNotFoundContent   = `{"status":"error","message":"room not found"}`
-	NotImplementedContent = `{"status":"error","message":"not implemented"}`
-)
-
-type Message struct {
-	MessageId string `json:"messageId"`
-	Command   string `json:"command"`
-	Content   string `json:"content"`
-	Room      string `json:"room"`
-	Sender    string `json:"sender"`
+type MessageKey struct {
+	room   string
+	sender string
 }
 
-func (msg *Message) UnmarshalJSON(data []byte) error {
-	type Alias Message
-	aux := &struct {
-		*Alias
-	}{
-		Alias: (*Alias)(msg),
-	}
+type Message struct {
+	Content string `json:"content"`
+	Room    Room   `json:"room"`
+	Sender  User   `json:"sender"`
+}
 
-	// Unmarshal the JSON data into the auxiliary structure to avoid infinite recursion
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
+// MessageGateway acts as a data mapper between the domain layer and de data layer, transforming the data from the database into domain objects and vice versa.
+type MessageGateway struct {
+	repo db.Repository[db.MessageKey, db.Message]
+}
 
-	if msg.MessageId == "" || msg.Command == "" {
-		return ErrMessageMalformed
+func (gw MessageGateway) MessageRecordToMessage(record db.Message) Message {
+	r := RoomGateway{}.RoomRecordToRoom(record.Room)
+	u := UserGateway{}.UserRecordToUser(record.Sender)
+	return Message{
+		Content: record.Content,
+		Room:    r,
+		Sender:  u,
 	}
-	// Check if non-optional fields are empty based on the command
-	switch msg.Command {
-	case SendMessageCmd:
-		// For SendMessage, all fields are required
-		if msg.Content == "" || msg.Room == "" || msg.Sender == "" {
-			return ErrMessageMalformed
-		}
-	case GetRoomsCmd:
-		// For GetRooms, only sender is required
-		// TODO why?
-		if msg.Sender == "" {
-			return ErrMessageMalformed
-		}
-	case GetRoomMessagesCmd:
-		// For GetRoomMessages, all fields are required
-		if msg.Content == "" || msg.Room == "" || msg.Sender == "" {
-			return ErrMessageMalformed
-		}
-	default:
-		return ErrUnknownCommand
+}
+
+func (gw MessageGateway) MessageToMessageRecord(msg Message) db.Message {
+	r := RoomGateway{}.RoomToRoomRecord(msg.Room)
+	u := UserGateway{}.UserToUserRecord(msg.Sender)
+	return db.Message{
+		Room:    r,
+		Sender:  u,
+		Content: msg.Content,
 	}
+}
+
+func (gw MessageGateway) Exists(pk MessageKey) bool {
+	key := db.MakeMessageKey(pk.room, pk.sender)
+	return gw.repo.Exists(key)
+}
+
+func (gw MessageGateway) Create(room *Message) error {
+	msgr := gw.MessageToMessageRecord(*room)
+	return gw.repo.Create(msgr)
+}
+
+func (gw MessageGateway) Read(pk MessageKey) *Message {
+	key := db.MakeMessageKey(pk.room, pk.sender)
+	msgr := gw.repo.Read(key)
+	room := gw.MessageRecordToMessage(msgr)
+	return &room
+
+}
+
+func (gw MessageGateway) ReadAll() []*Message {
+	msgrs := gw.repo.ReadAll()
+	rooms := make([]*Message, 0)
+	for _, u := range msgrs {
+		room := gw.MessageRecordToMessage(u)
+		rooms = append(rooms, &room)
+	}
+	return rooms
+}
+
+func (gw MessageGateway) Update(pk MessageKey, user *Message) error {
 	return nil
 }
 
-func (msg *Message) Json() ([]byte, error) {
-	return json.Marshal(msg)
+func (gw MessageGateway) Delete(pk MessageKey) {
+	key := db.MakeMessageKey(pk.room, pk.sender)
+	gw.repo.Delete(key)
 }

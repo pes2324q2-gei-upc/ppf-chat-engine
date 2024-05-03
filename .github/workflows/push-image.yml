@@ -1,0 +1,38 @@
+name: Docker Image CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build with docker comPSOE
+      run: docker compose -f "docker-compose.build.yml" build # produces images
+
+    - name: Saving image into a tarred archive
+      run: docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
+
+    - name: SCP image to remote
+      run: |
+       scp ${{github.event.repository.name}}.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
+       scp docker-compose.yml ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        USERNAME: ${{ secrets.USERNAME }}
+        HOST: ${{ secrets.HOST }}
+
+    - name: Compose Up in remote
+      run: |
+       # to just run docker commands a context must exist and be used
+       docker context create remote --docker "host=ssh://${{ secrets.USERNAME }}@${{ secrets.HOST }}"
+       docker context use remote
+       docker load -i /home/ubuntu/PPF/${{github.event.repository.name}}.tar
+       docker compose up chat-engine -d
+
