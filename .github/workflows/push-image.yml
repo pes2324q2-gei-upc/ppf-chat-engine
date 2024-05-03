@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Instalar key para que el agent SSH del runner pueda ejecutar commandos de docker usando ssh
     - name: Install SSH Key
       uses: shimataro/ssh-key-action@v2.7.0
       with:
@@ -17,14 +18,17 @@ jobs:
         # config: ${{ secrets.CONFIG }} # ssh_config; optional
         # if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
             
-    
+    # Checkout del repo
     - uses: actions/checkout@v4
     - name: Build with docker comPSOE
-      run: docker compose -f "docker-compose.build.yml" build # produces images
+    # Build de las imagenes, usamos un .yml concreto que especifica los docker files etc...
+      run: docker compose -f "docker-compose.build.yml" build
 
+    # Guardamos las imagenes generadas como un .tar
     - name: Saving image into a tarred archive
       run: docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
 
+    # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
     - name: SCP image to remote
       run: |
        scp ${{github.event.repository.name}}.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
@@ -34,6 +38,8 @@ jobs:
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
 
+    # Si el ssh agent de github esta bien configurado los comandos de docker
+    # deberian ejecutarse en el contexto configurado (el remote)
     - name: Compose Up in remote
       run: |
        # to just run docker commands a context must exist and be used
@@ -41,4 +47,3 @@ jobs:
        docker context use remote
        docker load -i /home/ubuntu/PPF/${{github.event.repository.name}}.tar
        docker compose up chat-engine -d
-
