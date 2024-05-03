@@ -14,19 +14,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build with docker comPSOE
-      run: docker compose build # produces images
+      run: docker compose -f "docker-compose.build.yml" build # produces images
 
-    - name: Save image into a tarred archive
-    # docker image save for each image
+    - name: Saving image into a tarred archive
+      run: docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
 
-    - name: SCP file to remote
+    - name: SCP image to remote
       run: |
-        scp -o -i ${{ scerets.SSH_PRIVATE_KEY }} image.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/path/to/image
+       scp ${{github.event.repository.name}}.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
+       scp docker-compose.yml ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         USERNAME: ${{ secrets.USERNAME }}
         HOST: ${{ secrets.HOST }}
 
-    - name: Docker compose in remote
-    # https://stackoverflow.com/questions/35433147/how-to-run-docker-compose-on-remote-host
-    
+    - name: Compose Up in remote
+      run: |
+       # to just run docker commands a context must exist and be used
+       docker context create remote --docker "host=ssh://${{ secrets.USERNAME }}@${{ secrets.HOST }}"
+       docker context use remote
+       docker load -i /home/ubuntu/PPF/${{github.event.repository.name}}.tar
+       docker compose up chat-engine -d
+
