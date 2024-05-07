@@ -37,5 +37,5 @@ jobs:
        # to just run docker commands a context must exist and be used
        docker context create remote --docker "host=ssh://${{ secrets.USERNAME }}@${{ secrets.HOST }}"
        docker context use remote
-       docker load -i /home/ubuntu/PPF/${{github.event.repository.name}}.tar
+       docker load -i ~/PPF/${{github.event.repository.name}}.tar
        docker compose up chat-engine -d
