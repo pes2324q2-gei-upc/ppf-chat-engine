@@ -22,7 +22,7 @@ jobs:
 
     - name: Build and save image
       run: |
-        docker build -t ${{github.event.repository.name}}:latest --no-cache .
+        docker build -t ${{github.event.repository.name}}:latest .
         docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
 
     # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
