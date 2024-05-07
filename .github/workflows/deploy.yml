@@ -28,7 +28,7 @@ jobs:
     # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
     - name: SCP image to remote
       run: |
-       scp ${{github.event.repository.name}}.tar ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
+       scp ${{github.event.repository.name}}.tar ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/PPF
   
     # Si el ssh agent de github esta bien configurado los comandos de docker
     # deberian ejecutarse en el contexto configurado (el remote)
