@@ -29,8 +29,7 @@ jobs:
     - name: SCP image to remote
       run: |
        scp ${{github.event.repository.name}}.tar ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
-       scp docker-compose.yml ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
-
+  
     # Si el ssh agent de github esta bien configurado los comandos de docker
     # deberian ejecutarse en el contexto configurado (el remote)
     - name: Compose Up in remote
