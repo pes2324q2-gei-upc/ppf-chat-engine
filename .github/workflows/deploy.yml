@@ -28,6 +28,8 @@ jobs:
     
     - name: Checkout of chat engine
       uses: actions/checkout@v4
+      with:
+        clean: false
 
     - name: Build images with Docker ComPSOE
       run: |
