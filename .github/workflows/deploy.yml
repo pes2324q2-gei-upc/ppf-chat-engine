@@ -17,8 +17,8 @@ jobs:
         # name: id_rsa # optional
         # config: ${{ secrets.CONFIG }} # ssh_config; optional
         # if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
-    - uses: actions/checkout@v4
     - name: Copy compose form Main Repo
+      uses: actions/checkout@v4
       with:
         repository: pes2324q2-gei-upc/PowerPathFinder
         sparse-checkout: |
@@ -27,8 +27,8 @@ jobs:
         sparse-checkout-cone-mode: false
     
     # Checkout del repo
-    - uses: actions/checkout@v4
     - name: Build with docker comPSOE
+      uses: actions/checkout@v4
     # Build de las imagenes, usamos un .yml concreto que especifica los docker files etc...
       run: docker compose -f "docker-compose.build.yml" build
 
