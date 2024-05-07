@@ -17,7 +17,8 @@ jobs:
         # name: id_rsa # optional
         # config: ${{ secrets.CONFIG }} # ssh_config; optional
         # if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
-    - name: Copy compose form Main Repo
+
+    - name: Copy compose files form PowerPathFinder
       uses: actions/checkout@v4
       with:
         repository: pes2324q2-gei-upc/PowerPathFinder
@@ -26,14 +27,14 @@ jobs:
           docker-compose.yml
         sparse-checkout-cone-mode: false
     
-    # Checkout del repo
-    - name: Build with docker comPSOE
+    - name: Checkout of chat engine
       uses: actions/checkout@v4
-    # Build de las imagenes, usamos un .yml concreto que especifica los docker files etc...
+
+    - name: Build images with Docker ComPSOE
       run: docker compose -f "docker-compose.build.yml" build
 
     # Guardamos las imagenes generadas como un .tar
-    - name: Saving image into a tarred archive
+    - name: Save image into archive
       run: docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
 
     # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
