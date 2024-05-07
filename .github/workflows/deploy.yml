@@ -20,22 +20,17 @@ jobs:
     - name: Checkout of chat engine
       uses: actions/checkout@v4
 
-    - name: Build and save image
+    - name: Docker build and save image
       run: |
         docker build -t ${{github.event.repository.name}}:latest .
-        docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
-
-    # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
-    - name: SCP image to remote
-      run: |
-       scp ${{github.event.repository.name}}.tar ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/PPF
   
     # Si el ssh agent de github esta bien configurado los comandos de docker
     # deberian ejecutarse en el contexto configurado (el remote)
     - name: Compose Up in remote
       run: |
        # to just run docker commands a context must exist and be used
+       docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
        docker context create remote --docker "host=ssh://${{ secrets.USERNAME }}@${{ secrets.HOST }}"
        docker context use remote
-       docker load -i ${{ secrets.USERNAME }}@${{ secrets.HOST }}:~/PPF/${{github.event.repository.name}}.tar
+       docker load -i ${{github.event.repository.name}}.tar
        docker compose up chat-engine -d
