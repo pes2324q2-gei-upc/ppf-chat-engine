@@ -24,7 +24,6 @@ jobs:
         repository: pes2324q2-gei-upc/PowerPathFinder
         sparse-checkout: |
           docker-compose.build.yml
-          docker-compose.yml
         sparse-checkout-cone-mode: false
     
     - name: Checkout of chat engine
