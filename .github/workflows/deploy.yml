@@ -17,40 +17,19 @@ jobs:
         # name: id_rsa # optional
         # config: ${{ secrets.CONFIG }} # ssh_config; optional
         # if_key_exists: fail # replace / ignore / fail; optional (defaults to fail)
-
-    - name: Checkout compose files form PowerPathFinder
-      uses: actions/checkout@v4
-      with:
-        repository: pes2324q2-gei-upc/PowerPathFinder
-        sparse-checkout: |
-          docker-compose.build.yml
-          docker-compose.yml
-        sparse-checkout-cone-mode: false
-
-    - name: Save files
-      run: |
-          mv docker-compose.build.yml ..
-          mv docker-compose.yml ..
     
     - name: Checkout of chat engine
       uses: actions/checkout@v4
-      with:
-        clean: false
 
-    - name: Build images with Docker ComPSOE
+    - name: Build and save image
       run: |
-        mv ../docker-compose.build.yml .
-        mv ../docker-compose.yml .
-        docker compose -f "docker-compose.build.yml" build
-
-    # Guardamos las imagenes generadas como un .tar
-    - name: Save image into archive
-      run: docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
+        docker build -t ${{github.event.repository.name}}:latest --no-cache .
+        docker save ${{github.event.repository.name}}:latest -o ${{github.event.repository.name}}.tar
 
     # Copiamos al remoto la imagen y un .yml que solo recrea los contenedores con las imagenes que hay en el systema
     - name: SCP image to remote
       run: |
-       scp ${{github.event.repository.name}}.tar.gz ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
+       scp ${{github.event.repository.name}}.tar ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
        scp docker-compose.yml ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/home/ubuntu/PPF
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
