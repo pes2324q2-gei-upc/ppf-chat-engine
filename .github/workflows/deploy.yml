@@ -19,7 +19,7 @@ jobs:
     
     - uses: actions/checkout@v4
       with:
-        repository: pes2324q2-gei-upc/ppf-chat-engine
+        repository: pes2324q2-gei-upc/PowerPathFinder
         sparse-checkout: |
           docker-compose.yml
         sparse-checkout-cone-mode: false
