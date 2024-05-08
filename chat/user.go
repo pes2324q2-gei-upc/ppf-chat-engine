@@ -57,7 +57,7 @@ func NewUser(id string, name string, client *Client) *User {
 }
 
 type UserGateway struct {
-	repo db.UserRepository
+	Repo db.UserRepository
 }
 
 func (gw UserGateway) UserRecordToUser(record db.User) User {
@@ -76,23 +76,23 @@ func (gw UserGateway) UserToUserRecord(user User) db.User {
 }
 
 func (gw UserGateway) Exists(pk string) bool {
-	return gw.repo.Exists(pk)
+	return gw.Repo.Exists(pk)
 }
 
 func (gw UserGateway) Create(user *User) error {
 	userr := gw.UserToUserRecord(*user)
-	return gw.repo.Create(userr)
+	return gw.Repo.Create(userr)
 }
 
 func (gw UserGateway) Read(pk string) *User {
-	userr := *gw.repo.Read(pk)
+	userr := *gw.Repo.Read(pk)
 	user := gw.UserRecordToUser(userr)
 	return &user
 
 }
 
 func (gw UserGateway) ReadAll() []*User {
-	userrs := gw.repo.ReadAll()
+	userrs := gw.Repo.ReadAll()
 	users := make([]*User, 0)
 	for _, u := range userrs {
 		user := gw.UserRecordToUser(*u)
@@ -106,5 +106,5 @@ func (gw UserGateway) Update(pk string, user *User) error {
 }
 
 func (gw UserGateway) Delete(pk string) {
-	gw.repo.Delete(pk)
+	gw.Repo.Delete(pk)
 }

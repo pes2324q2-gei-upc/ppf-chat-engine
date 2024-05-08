@@ -295,14 +295,14 @@ func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 		Credentials: credentials,
 	}
 	gwm := GatewayManager{
-		userGw: UserGateway{
-			repo: persist.UserRepository{Db: db},
+		UserGw: UserGateway{
+			Repo: persist.UserRepository{Db: db},
 		},
-		roomGw: RoomGateway{
-			repo: persist.RoomRepository{Db: db},
+		RoomGw: RoomGateway{
+			Repo: persist.RoomRepository{Db: db},
 		},
-		msgGw: MessageGateway{
-			repo: persist.MessageRepository{Db: db},
+		MsgGw: MessageGateway{
+			Repo: persist.MessageRepository{Db: db},
 		},
 	}
 	wsserver := &WsServer{

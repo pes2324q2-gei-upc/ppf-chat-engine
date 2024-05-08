@@ -17,7 +17,7 @@ type Message struct {
 
 // MessageGateway acts as a data mapper between the domain layer and de data layer, transforming the data from the database into domain objects and vice versa.
 type MessageGateway struct {
-	repo db.Repository[db.MessageKey, db.Message]
+	Repo db.Repository[db.MessageKey, db.Message]
 }
 
 func (gw MessageGateway) MessageRecordToMessage(record db.Message) Message {
@@ -42,24 +42,24 @@ func (gw MessageGateway) MessageToMessageRecord(msg Message) db.Message {
 
 func (gw MessageGateway) Exists(pk MessageKey) bool {
 	key := db.MakeMessageKey(pk.room, pk.sender)
-	return gw.repo.Exists(key)
+	return gw.Repo.Exists(key)
 }
 
 func (gw MessageGateway) Create(room *Message) error {
 	msgr := gw.MessageToMessageRecord(*room)
-	return gw.repo.Create(msgr)
+	return gw.Repo.Create(msgr)
 }
 
 func (gw MessageGateway) Read(pk MessageKey) *Message {
 	key := db.MakeMessageKey(pk.room, pk.sender)
-	msgr := gw.repo.Read(key)
+	msgr := gw.Repo.Read(key)
 	room := gw.MessageRecordToMessage(msgr)
 	return &room
 
 }
 
 func (gw MessageGateway) ReadAll() []*Message {
-	msgrs := gw.repo.ReadAll()
+	msgrs := gw.Repo.ReadAll()
 	rooms := make([]*Message, 0)
 	for _, u := range msgrs {
 		room := gw.MessageRecordToMessage(u)
@@ -74,5 +74,5 @@ func (gw MessageGateway) Update(pk MessageKey, user *Message) error {
 
 func (gw MessageGateway) Delete(pk MessageKey) {
 	key := db.MakeMessageKey(pk.room, pk.sender)
-	gw.repo.Delete(key)
+	gw.Repo.Delete(key)
 }

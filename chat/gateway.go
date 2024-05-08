@@ -11,19 +11,19 @@ type Gateway[Pk any, Resource any] interface {
 }
 
 type GatewayManager struct {
-	userGw Gateway[string, User]
-	roomGw Gateway[string, Room]
-	msgGw  Gateway[MessageKey, Message]
+	UserGw Gateway[string, User]
+	RoomGw Gateway[string, Room]
+	MsgGw  Gateway[MessageKey, Message]
 }
 
 func (gwm *GatewayManager) UserGateway() Gateway[string, User] {
-	return gwm.userGw
+	return gwm.UserGw
 }
 
 func (gwm *GatewayManager) RoomGateway() Gateway[string, Room] {
-	return gwm.roomGw
+	return gwm.RoomGw
 }
 
 func (gwm *GatewayManager) MessageGateway() Gateway[MessageKey, Message] {
-	return gwm.msgGw
+	return gwm.MsgGw
 }

@@ -94,7 +94,7 @@ func NewRoom(id string, name string, driver *string) *Room {
 }
 
 type RoomGateway struct {
-	repo db.RoomRepository
+	Repo db.RoomRepository
 }
 
 func (gw RoomGateway) RoomRecordToRoom(record db.Room) Room {
@@ -120,23 +120,23 @@ func (gw RoomGateway) RoomToRoomRecord(user Room) db.Room {
 }
 
 func (gw RoomGateway) Exists(pk string) bool {
-	return gw.repo.Exists(pk)
+	return gw.Repo.Exists(pk)
 }
 
 func (gw RoomGateway) Create(room *Room) error {
 	roomr := gw.RoomToRoomRecord(*room)
-	return gw.repo.Create(roomr)
+	return gw.Repo.Create(roomr)
 }
 
 func (gw RoomGateway) Read(pk string) *Room {
-	roomr := *gw.repo.Read(pk)
+	roomr := *gw.Repo.Read(pk)
 	room := gw.RoomRecordToRoom(roomr)
 	return &room
 
 }
 
 func (gw RoomGateway) ReadAll() []*Room {
-	roomrs := gw.repo.ReadAll()
+	roomrs := gw.Repo.ReadAll()
 	rooms := make([]*Room, 0)
 	for _, u := range roomrs {
 		room := gw.RoomRecordToRoom(*u)
@@ -150,5 +150,5 @@ func (gw RoomGateway) Update(pk string, user *Room) error {
 }
 
 func (gw RoomGateway) Delete(pk string) {
-	gw.repo.Delete(pk)
+	gw.Repo.Delete(pk)
 }
