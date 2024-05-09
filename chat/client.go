@@ -32,23 +32,22 @@ type Client struct {
 	User       *User
 
 	// Buffered channel of outbound messages
-	send chan *Action
+	send  chan *Action
+	close chan bool
 }
 
 // Close closes the client connection and unregisters the client from the engine.
 func (client *Client) Close() {
 	log.Printf("info: closing connection for user %s", client.User.Id)
+	client.close <- true
 	close(client.send)
+	close(client.close)
 	client.User = nil
 	client.Connection.Close()
-	client.Server.unregister <- client
 }
 
 // ReadPump pump messages from the websocket connection and the client handles them.
 func (client *Client) ReadPump() {
-	// defer conn closing and engine unregistering
-	defer client.Close()
-
 	// Setup client connection
 	client.Connection.SetReadLimit(maxMessageSize)
 
@@ -67,12 +66,19 @@ func (client *Client) ReadPump() {
 		if err != nil {
 			// Log if is unexpected close error
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				client.Server.unregister <- client
+				log.Printf("warn: %v", err)
 			}
 			break
 		}
 		// Send the trimmed message to the engine
 		client.HandleMessage(msg)
+
+		// read from the close channel to check if the client should be closed
+		select {
+		case <-client.close:
+			return
+		}
 	}
 }
 
@@ -80,10 +86,8 @@ func (client *Client) ReadPump() {
 func (client *Client) WritePump() {
 	// Start a ticker to send ping messages to the client
 	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		client.Close()
-	}()
+	defer ticker.Stop()
+
 	// Loop to write messages to the WebSocket connection
 	for {
 		select {
@@ -92,7 +96,7 @@ func (client *Client) WritePump() {
 			client.Connection.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// Engine closed the channel
-				client.Connection.WriteControl(websocket.CloseMessage, []byte{}, time.Now().Add(writeWait))
+				client.Server.unregister <- client
 				return
 			}
 			// Get the writer to write the message to the WebSocket connection and write the message
@@ -123,8 +127,11 @@ func (client *Client) WritePump() {
 			}
 		case <-ticker.C:
 			if err := client.Connection.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
+				client.Server.unregister <- client
 				return
 			}
+		case <-client.close:
+			return
 		}
 	}
 }
@@ -207,5 +214,6 @@ func NewClient(connection *websocket.Conn, server *WsServer, user *User) *Client
 		server,
 		user,
 		make(chan *Action, 256),
+		make(chan bool, 1),
 	}
 }

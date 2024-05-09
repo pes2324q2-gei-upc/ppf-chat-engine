@@ -81,7 +81,7 @@ func setup() {
 
 	mockServer = httptest.NewUnstartedServer(nil)
 
-	database = persist.Init("chat.db?cache=shared&mode=memory")
+	database = persist.Init("file::memory:?cache=shared")
 
 	engine, _ = NewTestChatEngine(database)
 	ctrl := api.NewChatController(mux.NewRouter(), engine)

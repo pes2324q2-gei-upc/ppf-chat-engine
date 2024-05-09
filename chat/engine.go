@@ -216,7 +216,6 @@ func (engine *ChatEngine) RequestUser(id string) (*User, error) {
 func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 	// make request
 	url := engine.Configuration.RouteApiUrl.JoinPath("v2", "routes")
-
 	// Assign the updated query parameters back to the URL
 	q := url.Query()
 	q.Add("user", id)
