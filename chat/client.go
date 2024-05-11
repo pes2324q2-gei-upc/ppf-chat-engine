@@ -62,10 +62,8 @@ func (client *Client) ReadPump() {
 
 	// Loop to read messages from the WebSocket connection
 	for {
-		log.Println("info: reading message")
 		_, msg, err := client.Connection.ReadMessage()
 		if err != nil {
-			log.Println(err)
 			// Log if is unexpected close error
 			if websocket.IsCloseError(err, websocket.CloseNoStatusReceived) {
 				log.Printf("warn: closed connection: %v", err)
