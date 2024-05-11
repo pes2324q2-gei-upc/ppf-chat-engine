@@ -11,7 +11,7 @@ import (
 
 const (
 	// Max time allowed to read the next pong msg from the peer
-	pongWait   = 120 * time.Second
+	pongWait   = 20 * time.Second
 	pingPeriod = 10 * time.Second
 
 	// Max time allowed to write a message to the peer
@@ -39,11 +39,11 @@ type Client struct {
 // Close closes the client connection and unregisters the client from the engine.
 func (client *Client) Close() {
 	log.Printf("info: closing connection for user %s", client.User.Id)
+	time.Sleep(time.Millisecond)
 	client.close <- true
+	client.User = nil
 	close(client.send)
 	close(client.close)
-	client.User = nil
-	client.Connection.Close()
 }
 
 // ReadPump pump messages from the websocket connection and the client handles them.
@@ -62,23 +62,22 @@ func (client *Client) ReadPump() {
 
 	// Loop to read messages from the WebSocket connection
 	for {
+		log.Println("info: reading message")
 		_, msg, err := client.Connection.ReadMessage()
 		if err != nil {
+			log.Println(err)
 			// Log if is unexpected close error
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				client.Server.unregister <- client
-				log.Printf("warn: %v", err)
+			if websocket.IsCloseError(err, websocket.CloseNoStatusReceived) {
+				log.Printf("warn: closed connection: %v", err)
 			}
-			break
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
+			client.Server.unregister <- client
+			return
 		}
 		// Send the trimmed message to the engine
 		client.HandleMessage(msg)
-
-		// read from the close channel to check if the client should be closed
-		select {
-		case <-client.close:
-			return
-		}
 	}
 }
 
@@ -96,7 +95,6 @@ func (client *Client) WritePump() {
 			client.Connection.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// Engine closed the channel
-				client.Server.unregister <- client
 				return
 			}
 			// Get the writer to write the message to the WebSocket connection and write the message
@@ -130,8 +128,6 @@ func (client *Client) WritePump() {
 				client.Server.unregister <- client
 				return
 			}
-		case <-client.close:
-			return
 		}
 	}
 }
