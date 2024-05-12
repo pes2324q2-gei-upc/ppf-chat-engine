@@ -1,29 +1,22 @@
 package chat
 
-type Gateway[Pk any, Resource any] interface {
-	Exists(Pk) bool
-
-	Create(*Resource) error
-	Read(Pk) *Resource
-	ReadAll() []*Resource
-	Update(Pk, *Resource) error
-	Delete(Pk)
-}
-
 type GatewayManager struct {
-	UserGw Gateway[string, User]
-	RoomGw Gateway[string, Room]
-	MsgGw  Gateway[MessageKey, Message]
+	UserGw    UserGateway
+	RoomGw    RoomGateway
+	MessageGw MessageGateway
 }
 
-func (gwm *GatewayManager) UserGateway() Gateway[string, User] {
-	return gwm.UserGw
+type Gateway[Pk any, Value any] interface {
+	Exists(Pk) bool
+	Create(Pk) error
+	Read(Pk) Value
+	ReadAll() []Value
+	Update(Pk, Value) error
+	Delete(Pk)
+
+	FindBy(string, any) []Value
 }
 
-func (gwm *GatewayManager) RoomGateway() Gateway[string, Room] {
-	return gwm.RoomGw
-}
-
-func (gwm *GatewayManager) MessageGateway() Gateway[MessageKey, Message] {
-	return gwm.MsgGw
+type IUserGateway interface {
+	Gateway[string, User]
 }

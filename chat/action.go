@@ -58,8 +58,8 @@ func (msg *Action) UnmarshalJSON(data []byte) error {
 			return ErrMessageMalformed
 		}
 	case GetRoomMessagesCmd:
-		// For GetMessageMessages, all fields are required
-		if msg.Content == "" || msg.Room == "" || msg.Sender == "" {
+		// For GetRoom Messages, all fields are required
+		if msg.Room == "" || msg.Sender == "" {
 			return ErrMessageMalformed
 		}
 	default:

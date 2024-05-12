@@ -65,6 +65,11 @@ func (engine *ChatEngine) Exists(id string) bool {
 	return ok
 }
 
+func (engine *ChatEngine) GetRoomMessages(roomId string) []*Message {
+	messages := engine.MessageGw.FindByRoom(roomId)
+	return messages
+}
+
 // InitUser initializes a user in the chat engine by:
 // 1. Requesting the user data at the UserAPI
 // 2. Requesting the routes that belong to the user (as passenger or driver) at the RouteAPI
@@ -259,19 +264,15 @@ func (engine *ChatEngine) RequestUserRoutes(id string) ([]*Route, error) {
 }
 
 func (engine *ChatEngine) StoreMessage(message Message) {
-	userGw := engine.GatewayManager.UserGateway()
-	roomGw := engine.GatewayManager.RoomGateway()
-	messageGw := engine.GatewayManager.MessageGateway()
-
-	if !userGw.Exists(message.Sender.Id) {
-		err := userGw.Create(&message.Sender)
+	if !engine.UserGw.Exists(message.Sender.Id) {
+		err := engine.UserGw.Create(&message.Sender)
 		log.Printf("%v", err)
 	}
-	if !roomGw.Exists(message.Room.Id) {
-		err := roomGw.Create(&message.Room)
+	if !engine.RoomGw.Exists(message.Room.Id) {
+		err := engine.RoomGw.Create(&message.Room)
 		log.Printf("%v", err)
 	}
-	messageGw.Create(&message)
+	engine.MessageGw.Create(&message)
 }
 
 // NewChatEngine creates a new chat engine with the intended application defaults.
@@ -300,7 +301,7 @@ func NewDefaultChatEngine(db *gorm.DB) (*ChatEngine, error) {
 		RoomGw: RoomGateway{
 			Repo: persist.RoomRepository{Db: db},
 		},
-		MsgGw: MessageGateway{
+		MessageGw: MessageGateway{
 			Repo: persist.MessageRepository{Db: db},
 		},
 	}

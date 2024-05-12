@@ -96,12 +96,11 @@ _Message:_
 {
     "messageId": "<msg_id>",
     "command": "GetRoomMessages",
-    "content": "<datetime ISO 8601>", // optional
+    "content": "",
     "room": "<room_id>",
     "sender": "<user_id>"
 }
 ```
-- if `content` is an empty string, the CE shall return all messages in the room in order
 
 _Response:_
 ```json
@@ -111,11 +110,13 @@ _Response:_
         "status": "ok",
         "messages": [
             {
+                "ts": "<datetime RFC3339>" // 2006-01-02T15:04:05Z07:00
                 "content": "<message>",
+                "room": "<room_id>",
                 "sender": {
-                    "username":
+                    "id": "<user_id>",
+                    "username": "<user_name>",
                 },
-                "timestamp": "<datetime ISO 8601>"
             },
             ...
         ]

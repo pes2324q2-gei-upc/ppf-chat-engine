@@ -185,9 +185,9 @@ func (client *Client) handleGetRooms(message *Action) {
 // Handle a Get Room Messages command by sending the client the messages of the specified room.
 func (client *Client) handleGetRoomMessages(message *Action) {
 	// Send the message to the room
-	log.Printf("warning: not implemented yet")
+	messages := client.Engine().GetRoomMessages(message.Room)
 	response := *message
-	response.Content = NotImplementedContent
+	response.Content = messages
 	client.send <- &response
 }
 

@@ -1,6 +1,9 @@
 package chat
 
 import (
+	"encoding/json"
+	"time"
+
 	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
 
@@ -10,9 +13,24 @@ type MessageKey struct {
 }
 
 type Message struct {
-	Content string `json:"content"`
-	Room    Room   `json:"room"`
-	Sender  User   `json:"sender"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
+	Room      Room      `json:"room"`
+	Sender    User      `json:"sender"`
+}
+
+func (m *Message) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Ts      string `json:"ts"`
+		Content string `json:"content"`
+		Room    string `json:"room"`
+		Sender  User   `json:"sender"`
+	}{
+		Ts:      m.CreatedAt.Format(time.RFC3339),
+		Content: m.Content,
+		Room:    m.Room.Id,
+		Sender:  m.Sender,
+	})
 }
 
 // MessageGateway acts as a data mapper between the domain layer and de data layer, transforming the data from the database into domain objects and vice versa.
@@ -24,9 +42,10 @@ func (gw MessageGateway) MessageRecordToMessage(record db.Message) Message {
 	r := RoomGateway{}.RoomRecordToRoom(record.Room)
 	u := UserGateway{}.UserRecordToUser(record.Sender)
 	return Message{
-		Content: record.Content,
-		Room:    r,
-		Sender:  u,
+		CreatedAt: record.CreatedAt,
+		Content:   record.Content,
+		Room:      r,
+		Sender:    u,
 	}
 }
 
@@ -75,4 +94,17 @@ func (gw MessageGateway) Update(pk MessageKey, user *Message) error {
 func (gw MessageGateway) Delete(pk MessageKey) {
 	key := db.MakeMessageKey(pk.room, pk.sender)
 	gw.Repo.Delete(key)
+}
+
+func (gw MessageGateway) FindByRoom(room string) []*Message {
+	msgrs, err := gw.Repo.(db.MessageRepository).GetByRoom(db.Room{Id: room})
+	if err != nil {
+		return nil
+	}
+	rooms := make([]*Message, 0)
+	for _, u := range msgrs {
+		room := gw.MessageRecordToMessage(u)
+		rooms = append(rooms, &room)
+	}
+	return rooms
 }

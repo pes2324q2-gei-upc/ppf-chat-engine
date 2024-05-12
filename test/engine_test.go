@@ -42,7 +42,7 @@ func NewTestChatEngine(db *gorm.DB) (*chat.ChatEngine, error) {
 		RoomGw: chat.RoomGateway{
 			Repo: persist.RoomRepository{Db: db},
 		},
-		MsgGw: chat.MessageGateway{
+		MessageGw: chat.MessageGateway{
 			Repo: persist.MessageRepository{Db: db},
 		},
 	}
