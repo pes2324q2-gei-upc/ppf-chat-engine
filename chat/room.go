@@ -2,6 +2,7 @@ package chat
 
 import (
 	"encoding/json"
+	"log"
 
 	db "github.com/pes2324q2-gei-upc/ppf-chat-engine/persist"
 )
@@ -17,6 +18,12 @@ type Room struct {
 
 	broadcast chan *Action // Channel for broadcasting messages to all users in the room
 	close     chan bool    // Channel for closing the room
+}
+
+func (room *Room) CloseIfEmpty() {
+	if room.Empty() {
+		room.Close()
+	}
 }
 
 func (room *Room) MarshalJSON() ([]byte, error) {
@@ -50,6 +57,7 @@ func (room *Room) Run() {
 		case message := <-room.broadcast:
 			room.Broadcast(message)
 		case <-room.close:
+			log.Println("info: closing room")
 			return
 		}
 	}

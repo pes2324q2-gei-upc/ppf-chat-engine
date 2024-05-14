@@ -30,6 +30,8 @@ jobs:
 
     - name: Checkout of chat engine
       uses: actions/checkout@v4
+      with:
+        ref: main
 
     - name: Docker build and save image
       run: |

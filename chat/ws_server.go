@@ -22,6 +22,12 @@ func (server *WsServer) Run() {
 			log.Printf("info: registering client %s", client.User.Id)
 			server.Clients[client] = true
 		case client := <-server.unregister:
+			for room := range client.User.Rooms {
+				r := server.Engine.Rooms[room]
+				if r.Empty() {
+					r.Close()
+				}
+			}
 			client.Close()
 			delete(server.Clients, client)
 		case msgAction := <-server.store:
