@@ -45,7 +45,7 @@ func parseRequestBody(r *http.Request, v any) error {
 	return nil
 }
 
-// RootHandler handles the request to the home route.
+// Root handles the request to the home route.
 // It always returns a 200 status code.
 //
 //	@Summary	always returns 200
@@ -54,11 +54,11 @@ func parseRequestBody(r *http.Request, v any) error {
 //	@Produce	json
 //	@Success	200	{object}	any
 //	@Router		/ [get]
-func (ctrl *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *ChatApiController) Root(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ConnectHandler handles the request to open a connection.
+// Connect handles the request to open a connection.
 // It promotes an HTTP request to a WebSocket connection.
 //
 //	@Summary		opens a connection
@@ -68,7 +68,7 @@ func (ctrl *ChatApiController) RootHandler(w http.ResponseWriter, r *http.Reques
 //	@Produce		json
 //	@Success		200	{object}	any
 //	@Router			/connect/{userId} [get]
-func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *ChatApiController) Connect(w http.ResponseWriter, r *http.Request) {
 	id, ok := mux.Vars(r)["userId"]
 	if !ok {
 		log.Fatal("error: missing user ID")
@@ -93,7 +93,7 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 	log.Printf("User %s connected", id)
 }
 
-// CreateRoomHandler handles the request to open a new room.
+// CreateRoom handles the request to open a new room.
 // It opens a new room and joins the specified driver.
 //
 //	@Summary		opens a new room
@@ -103,7 +103,7 @@ func (ctrl *ChatApiController) ConnectHandler(w http.ResponseWriter, r *http.Req
 //	@Produce		json
 //	@Param			data	body	api.PostRoomRequest	true	"room data"
 //	@Router			/room [post]
-func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *ChatApiController) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	room := &PostRoomRequest{}
 	// Parse request body
 	if err := parseRequestBody(r, room); err != nil {
@@ -120,7 +120,7 @@ func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.
 	w.WriteHeader(http.StatusCreated)
 }
 
-// JoinRoomHandler handles the request to join a chat room.
+// JoinRoom handles the request to join a chat room.
 // It joins the specified user to the room.
 //
 //	@Summary	makes user join a room
@@ -129,7 +129,7 @@ func (ctrl *ChatApiController) CreateRoomHandler(w http.ResponseWriter, r *http.
 //	@Produce	json
 //	@Param		data	body	api.PostJoinRequest	true	"room data"
 //	@Router		/join [post]
-func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *ChatApiController) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	room := &PostJoinRequest{}
 	// Parse request body
 	if err := parseRequestBody(r, room); err != nil {
@@ -144,7 +144,7 @@ func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 }
 
-// LeaveRoomHandler handles the request to leave a chat room.
+// LeaveRoom handles the request to leave a chat room.
 // It removes the specified user from the room.
 //
 //	@Summary	makes user leave a room
@@ -154,7 +154,7 @@ func (ctrl *ChatApiController) JoinRoomHandler(w http.ResponseWriter, r *http.Re
 //	@Param		data	body		api.PostLeaveRequest	true	"room data"
 //	@Success	200		{object}	any
 //	@Router		/leave [post]
-func (ctrl *ChatApiController) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *ChatApiController) LeaveRoom(w http.ResponseWriter, r *http.Request) {
 	room := &PostLeaveRequest{}
 	// Parse request body
 	if err := parseRequestBody(r, room); err != nil {
@@ -166,18 +166,36 @@ func (ctrl *ChatApiController) LeaveRoomHandler(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetRoomMessages handles the request to get the messages of a room.
+// It returns the messages of the specified room.
+//
+//	@Summary		gets messages of a room
+//	@Tags			endpoints
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path	string	true	"room id"
+//	@Success		200	{object}	any
+//	@Router			/room/{id}/messages [get]
+func (ctrl *ChatApiController) GetRoomMessages(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	messages := ctrl.Engine.GetRoomMessages(id)
+	json.NewEncoder(w).Encode(messages)
+	w.WriteHeader(http.StatusOK)
+}
+
 // NewChatController creates a new instance of ChatApiController.
 func NewChatController(router *mux.Router, engine *chat.ChatEngine) *ChatApiController {
 	ctrl := &ChatApiController{
 		Router: mux.NewRouter(),
 		Engine: engine,
 	}
-	log.Println("info: registering API handlers")
-	ctrl.Router.HandleFunc("/", ctrl.RootHandler).Methods(http.MethodGet)
-	ctrl.Router.HandleFunc("/connect/{userId}", ctrl.ConnectHandler).Methods(http.MethodGet)
-	ctrl.Router.HandleFunc("/room", ctrl.CreateRoomHandler).Methods(http.MethodPost)
-	ctrl.Router.HandleFunc("/join", ctrl.JoinRoomHandler).Methods(http.MethodPost)
-	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoomHandler).Methods(http.MethodPost)
+	log.Println("info: registering API s")
+	ctrl.Router.HandleFunc("/", ctrl.Root).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/connect/{userId}", ctrl.Connect).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/room", ctrl.CreateRoom).Methods(http.MethodPost)
+	ctrl.Router.HandleFunc("/room/{id}/messages", ctrl.GetRoomMessages).Methods(http.MethodGet)
+	ctrl.Router.HandleFunc("/join", ctrl.JoinRoom).Methods(http.MethodPost)
+	ctrl.Router.HandleFunc("/leave", ctrl.LeaveRoom).Methods(http.MethodPost)
 
 	// TODO	ctrl.Router.HandleFunc("/room/<id>/messages").Methods(http.MethodGet)
 	// TODO ctrl.Router.HandleFunc("/room").Methods(http.MethodGet)
