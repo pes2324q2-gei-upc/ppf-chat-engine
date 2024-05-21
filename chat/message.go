@@ -24,12 +24,12 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		Ts      string `json:"ts"`
 		Content string `json:"content"`
 		Room    string `json:"room"`
-		Sender  User   `json:"sender"`
+		Sender  string `json:"sender"`
 	}{
 		Ts:      m.CreatedAt.Format(time.RFC3339),
 		Content: m.Content,
 		Room:    m.Room.Id,
-		Sender:  m.Sender,
+		Sender:  m.Sender.Id,
 	})
 }
 
