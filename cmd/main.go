@@ -39,7 +39,7 @@ func Run() error {
 
 	// Swagger documentation route
 	ctrl.Router.PathPrefix("/swagger").Handler(swag.Handler(
-		swag.URL("http://localhost:8082/swagger/doc.json"),
+		swag.URL("http://localhost:8083/swagger/doc.json"),
 	)).Methods(http.MethodGet)
 
 	go ctrl.Engine.Server.Run()
