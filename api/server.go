@@ -174,7 +174,7 @@ func (ctrl *ChatApiController) LeaveRoom(w http.ResponseWriter, r *http.Request)
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path	string	true	"room id"
-//	@Success		200	{object}	any
+//	@Success		200	{object}	chat.Message
 //	@Router			/room/{id}/messages [get]
 func (ctrl *ChatApiController) GetRoomMessages(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
