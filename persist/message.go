@@ -86,12 +86,12 @@ func (repo MessageRepository) Delete(pk MessageKey) {
 
 func (repo MessageRepository) GetByRoom(room Room) ([]Message, error) {
 	var results []Message
-	err := repo.Db.Model(&Message{Room: room}).Preload("Sender").Find(&results).Error
+	err := repo.Db.Where(Message{RoomID: room.Id}).Find(&results).Preload("Sender").Error
 	return results, err
 }
 
 func (repo MessageRepository) GetBySender(sender User) ([]Message, error) {
 	var results []Message
-	err := repo.Db.Model(&Message{Sender: sender}).Preload("Room").Find(&results).Error
+	err := repo.Db.Where(&Message{Sender: sender}).Preload("Room").Find(&results).Error
 	return results, err
 }
