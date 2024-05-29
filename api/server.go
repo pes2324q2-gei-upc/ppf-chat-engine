@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/auth"
@@ -76,8 +75,8 @@ func (ctrl *ChatApiController) Connect(w http.ResponseWriter, r *http.Request) {
 		log.Print("error: missing user ID")
 	}
 
-	// Get the token from the request
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	// Get the token from the uri as a query param
+	token := r.URL.Query().Get("token")
 	if token == "" {
 		log.Print("error: missing token")
 		http.Error(w, "missing token", http.StatusUnauthorized)
