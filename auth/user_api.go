@@ -79,7 +79,7 @@ func CheckUserToken(token string) (int, error) {
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("could not build check request: %w", err)
 	}
-	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Authorization", "Token"+token)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return http.StatusInternalServerError, fmt.Errorf("could not perform check request: %w", err)
