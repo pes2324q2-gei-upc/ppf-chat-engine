@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 type UserApiCredentials struct {
@@ -59,4 +60,34 @@ func (creds *UserApiCredentials) Token() string {
 		return ""
 	}
 	return *creds.token
+}
+
+func GetEnv(key, fallback string) string {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		value = fallback
+	}
+	return value
+}
+
+func CheckUserToken(token string) (int, error) {
+	userSvc, err := url.Parse(GetEnv("USER_API_URL", "http://localhost:8081"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodGet, userSvc.String()+"/users/self/", nil)
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("could not build check request: %w", err)
+	}
+	req.Header.Add("Authorization", "Token "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Errorf("could not perform check request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return resp.StatusCode, nil
 }
