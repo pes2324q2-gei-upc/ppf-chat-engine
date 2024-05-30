@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/pes2324q2-gei-upc/ppf-chat-engine/auth"
 	"github.com/pes2324q2-gei-upc/ppf-chat-engine/chat"
 )
 
@@ -71,8 +72,24 @@ func (ctrl *ChatApiController) Root(w http.ResponseWriter, r *http.Request) {
 func (ctrl *ChatApiController) Connect(w http.ResponseWriter, r *http.Request) {
 	id, ok := mux.Vars(r)["userId"]
 	if !ok {
-		log.Fatal("error: missing user ID")
+		log.Print("error: missing user ID")
 	}
+
+	// Get the token from the uri as a query param
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		log.Print("error: missing token")
+		http.Error(w, "missing token", http.StatusUnauthorized)
+		return
+	}
+	// Send request to user service to check if the user exists and the token provided is valid
+	status, err := auth.CheckUserToken(token)
+	if status != http.StatusOK {
+		log.Printf("error: %v", err)
+		http.Error(w, err.Error(), status)
+		return
+	}
+
 	// If the user does not exist on the engine, load it.
 	if !ctrl.Engine.Exists(id) {
 		if err := ctrl.Engine.InitUser(id); err != nil {

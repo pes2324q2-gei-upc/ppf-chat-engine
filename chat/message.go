@@ -39,13 +39,11 @@ type MessageGateway struct {
 }
 
 func (gw MessageGateway) MessageRecordToMessage(record db.Message) Message {
-	r := RoomGateway{}.RoomRecordToRoom(record.Room)
-	u := UserGateway{}.UserRecordToUser(record.Sender)
 	return Message{
 		CreatedAt: record.CreatedAt,
 		Content:   record.Content,
-		Room:      r,
-		Sender:    u,
+		Room:      Room{Id: record.RoomID},
+		Sender:    User{Id: record.SenderID},
 	}
 }
 
